@@ -2,20 +2,31 @@
 
 A dense, information-rich web UI for the [Transmission](https://transmissionbt.com/) BitTorrent daemon, inspired by µTorrent 2.x. Built with React 18 + TypeScript + Vite, deployed via Ansible onto a home server behind nginx.
 
+![Torrent list with sidebar and Trackers detail tab](transmission-web-gui-01.png)
+
+![Info tab showing transfer stats and torrent metadata](transmission-web-gui-02.png)
+
+![Right-click context menu with torrent actions](transmission-web-gui-03.png)
+
 ## Features
 
 - Torrent list with 13 sortable, resizable columns (double-click a column border to auto-fit)
-- Sidebar with three filter sections — Status, Folders, and Trackers — each independently scrollable and visually separated
+- Sidebar with four collapsible filter sections — Status, Folders, Trackers, Labels; right-click any section item for bulk operations
+- **Status filters**: All, Active (downloading or uploading right now), Downloading, Seeding, Paused, Checking, Error
 - Detail panel with Info, Files, Peers, Trackers, and Speed Graph tabs — all with resizable columns
 - **Info tab**: transfer stats, connection counts, limits, torrent metadata (hash, pieces, magnet, trackers, comment)
 - **Files tab**: per-file progress, multi-select (click / Ctrl+click / Shift+click), right-click menu to set Download/Skip and priority (High / Normal / Low)
 - Progress bar with centered percentage label
-- Right-click context menu with full torrent actions: Start, Force Start, Stop, Remove, Re-announce, Recheck, Priority submenu, Queue submenu (Top / Up / Down / Bottom), Copy Magnet Link, Set Location, Rename, Properties
+- Right-click context menu with full torrent actions: Start, Force Start, Stop, Remove, Re-announce, Recheck, Priority submenu, Queue submenu (Top / Up / Down / Bottom), Labels submenu, Copy Magnet Link, Set Location, Rename, Properties
+- Right-click any sidebar filter (status, folder, tracker, label) for bulk actions on matching torrents: Start All, Stop All, Re-announce, Recheck, Labels, Remove All
+- **Labels**: assign and remove labels per torrent via context menu; filter by label or "No label" in the sidebar; define a preset list of labels in Preferences
 - Double-click a torrent row to open its Properties dialog
 - **Properties dialog**: per-torrent speed limits, peer limit, seeding ratio and idle limits, editable tracker list
+- Keyboard navigation: Up/Down arrow keys move selection through the current view
 - Add torrent by URL or magnet link
-- Full Preferences dialog: speeds, port, queues, seeding ratio
+- Full Preferences dialog: speeds, port, queues, seeding ratio, label presets; warns before closing with unsaved changes
 - Connection settings (RPC URL, username, password) stored server-side in `config.json`
+- Auth error banner: when Transmission RPC requires Basic Auth, polling stops and a banner prompts to open Settings
 - Dynamic page title showing current download/upload speed when active
 - Light / dark theme via `prefers-color-scheme`
 - IBM Plex Sans UI + IBM Plex Mono for all numeric values
@@ -182,4 +193,8 @@ Clicking **Save** in Preferences writes to both localStorage and the backend. Us
 Persisted in `localStorage` per browser. Keys:
 - `transmission-col-widths` — main torrent table
 - `transmission-sidebar-w` — sidebar width
+- `transmission-sidebar-sections` — collapsed/expanded state of sidebar sections
+- `transmission-details-h` — detail panel height
+- `transmission-details-tab` — last active detail tab
+- `transmission-label-presets` — user-defined label preset list (set in Preferences)
 - `transmission-files-cols`, `transmission-peers-cols`, `transmission-trackers-cols` — detail panel sub-tables

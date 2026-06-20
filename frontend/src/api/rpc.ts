@@ -11,6 +11,11 @@ import { getConnectionConfig } from './config'
 
 let sessionId = ''
 
+/** Thrown when Transmission RPC responds with 401 (credentials missing or wrong). */
+export class AuthRequiredError extends Error {
+  constructor() { super('Transmission RPC requires authentication') }
+}
+
 async function call<T>(method: string, args: Record<string, unknown> = {}): Promise<T> {
   const body = JSON.stringify({ method, arguments: args })
   const { url, username, password } = getConnectionConfig()
@@ -21,16 +26,21 @@ async function call<T>(method: string, args: Record<string, unknown> = {}): Prom
   }
   if (username) headers['Authorization'] = 'Basic ' + btoa(`${username}:${password}`)
 
+  // credentials:'omit' prevents the browser from showing its native Basic Auth
+  // dialog when the server responds with 401 + WWW-Authenticate.
   const send = async (sid: string): Promise<Response> => {
     headers['X-Transmission-Session-Id'] = sid
-    return fetch(url, { method: 'POST', headers, body })
+    return fetch(url, { method: 'POST', headers, body, credentials: 'omit' })
   }
 
   let res = await send(sessionId)
 
+  if (res.status === 401) throw new AuthRequiredError()
+
   if (res.status === 409) {
     sessionId = res.headers.get('X-Transmission-Session-Id') ?? ''
     res = await send(sessionId)
+    if (res.status === 401) throw new AuthRequiredError()
   }
 
   if (!res.ok) throw new Error(`RPC HTTP ${res.status}`)
@@ -48,6 +58,7 @@ interface RawTorrent {
   percentDone: number
   totalSize: number
   downloadedEver: number
+  uploadedEver: number
   rateDownload: number
   rateUpload: number
   leftUntilDone: number
@@ -62,11 +73,13 @@ interface RawTorrent {
   error: number
   errorString: string
   trackers: TorrentTracker[]
+  labels: string[]
 }
 
 function normalise(raw: RawTorrent): Torrent {
   return {
     ...raw,
+    labels: raw.labels ?? [],
     seedsConnected: raw.peersSendingToUs,
     peersConnected: raw.peersGettingFromUs,
     status: raw.error > 0 ? 'error' : (RPC_STATUS[raw.status] ?? 'paused'),
@@ -187,6 +200,10 @@ export async function saveTorrentProps(
   }>,
 ): Promise<void> {
   await call('torrent-set', { ids: [id], ...props })
+}
+
+export async function setTorrentLabels(id: number, labels: string[]): Promise<void> {
+  await call('torrent-set', { ids: [id], labels })
 }
 
 export async function getMagnetLink(id: number): Promise<string> {

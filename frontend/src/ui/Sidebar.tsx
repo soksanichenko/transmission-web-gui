@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react'
 import React from 'react'
 import { SidebarItem } from '../components/navigation/SidebarItem'
+import { Icon } from '../components/controls/Icon'
 import type { Torrent, TorrentStatus } from '../api/types'
+
+const SECTIONS_KEY = 'transmission-sidebar-sections'
 
 const SIDEBAR_W_KEY = 'transmission-sidebar-w'
 const DEFAULT_W = 188
@@ -20,6 +23,7 @@ interface SidebarProps {
   torrents: Torrent[]
   filter: string
   onFilter: (f: string) => void
+  onSidebarContext: (filterKey: string, x: number, y: number) => void
 }
 
 const STATUSES: { id: TorrentStatus; label: string; dot: string }[] = [
@@ -34,8 +38,17 @@ function trackerHost(url: string): string {
   try { return new URL(url).hostname } catch { return url }
 }
 
-export function Sidebar({ torrents, filter, onFilter }: SidebarProps) {
+export function Sidebar({ torrents, filter, onFilter, onSidebarContext }: SidebarProps) {
+  const ctx = (key: string) => (e: React.MouseEvent) => { e.preventDefault(); onSidebarContext(key, e.clientX, e.clientY) }
   const [width, setWidth] = useState(loadWidth)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? '{}') } catch { return {} }
+  })
+  const toggleSection = (id: string) => setCollapsed(prev => {
+    const next = { ...prev, [id]: !prev[id] }
+    localStorage.setItem(SECTIONS_KEY, JSON.stringify(next))
+    return next
+  })
   const count = (pred: (t: Torrent) => boolean) => torrents.filter(pred).length
   const dirs = [...new Set(torrents.map(t => t.downloadDir))].sort()
 
@@ -52,6 +65,21 @@ export function Sidebar({ torrents, filter, onFilter }: SidebarProps) {
     }
   }
   const trackers = [...trackerCounts.entries()].sort((a, b) => b[1] - a[1])
+
+  // Collect labels with counts (from torrents + preset list)
+  const labelCounts = new Map<string, number>()
+  for (const t of torrents) {
+    for (const lbl of t.labels) {
+      labelCounts.set(lbl, (labelCounts.get(lbl) ?? 0) + 1)
+    }
+  }
+  try {
+    const presets: string[] = JSON.parse(localStorage.getItem('transmission-label-presets') ?? '[]')
+    for (const lbl of presets) {
+      if (!labelCounts.has(lbl)) labelCounts.set(lbl, 0)
+    }
+  } catch {}
+  const labels = [...labelCounts.entries()].sort((a, b) => a[0].localeCompare(b[0]))
 
   const startResize = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -85,37 +113,51 @@ export function Sidebar({ torrents, filter, onFilter }: SidebarProps) {
       >
         {/* Status section */}
         <div style={{ padding: '6px 6px 4px' }}>
-          <div className="section-label" style={{ padding: '4px 8px 4px' }}>Status</div>
-          <SidebarItem label="All" count={torrents.length} active={filter === 'all'} onClick={() => onFilter('all')} />
-          {STATUSES.map(s => (
+          <SectionHeader label="Status" id="status" collapsed={collapsed} onToggle={toggleSection} />
+          {!collapsed['status'] && <>
+            <SidebarItem label="All" count={torrents.length} active={filter === 'all'} onClick={() => onFilter('all')} onContextMenu={ctx('all')} />
             <SidebarItem
-              key={s.id}
-              label={s.label}
-              dotColor={s.dot}
-              count={count(t => t.status === s.id)}
-              active={filter === s.id}
-              onClick={() => onFilter(s.id)}
+              label="Active"
+              dotColor="var(--status-download)"
+              count={count(t => t.rateDownload > 0 || t.rateUpload > 0)}
+              active={filter === 'active'}
+              onClick={() => onFilter('active')}
+              onContextMenu={ctx('active')}
             />
-          ))}
+            {STATUSES.map(s => (
+              <SidebarItem
+                key={s.id}
+                label={s.label}
+                dotColor={s.dot}
+                count={count(t => t.status === s.id)}
+                active={filter === s.id}
+                onClick={() => onFilter(s.id)}
+                onContextMenu={ctx(s.id)}
+              />
+            ))}
+          </>}
         </div>
 
         <Divider />
 
         {/* Folders section */}
         <div style={{ padding: '4px 6px' }}>
-          <div className="section-label" style={{ padding: '4px 8px 4px' }}>Folders</div>
-          {dirs.map(d => (
-            <SidebarItem
-              key={d}
-              label={d}
-              icon="folder"
-              mono
-              count={count(t => t.downloadDir === d)}
-              active={filter === 'dir:' + d}
-              onClick={() => onFilter('dir:' + d)}
-            />
-          ))}
-          {dirs.length === 0 && <EmptyHint text="No folders" />}
+          <SectionHeader label="Folders" id="folders" collapsed={collapsed} onToggle={toggleSection} />
+          {!collapsed['folders'] && <>
+            {dirs.map(d => (
+              <SidebarItem
+                key={d}
+                label={d}
+                icon="folder"
+                mono
+                count={count(t => t.downloadDir === d)}
+                active={filter === 'dir:' + d}
+                onClick={() => onFilter('dir:' + d)}
+                onContextMenu={ctx('dir:' + d)}
+              />
+            ))}
+            {dirs.length === 0 && <EmptyHint text="No folders" />}
+          </>}
         </div>
 
         {/* Trackers section */}
@@ -123,8 +165,8 @@ export function Sidebar({ torrents, filter, onFilter }: SidebarProps) {
           <>
             <Divider />
             <div style={{ padding: '4px 6px 8px' }}>
-              <div className="section-label" style={{ padding: '4px 8px 4px' }}>Trackers</div>
-              {trackers.map(([host, n]) => (
+              <SectionHeader label="Trackers" id="trackers" collapsed={collapsed} onToggle={toggleSection} />
+              {!collapsed['trackers'] && trackers.map(([host, n]) => (
                 <SidebarItem
                   key={host}
                   label={host}
@@ -133,8 +175,40 @@ export function Sidebar({ torrents, filter, onFilter }: SidebarProps) {
                   count={n}
                   active={filter === 'tracker:' + host}
                   onClick={() => onFilter('tracker:' + host)}
+                  onContextMenu={ctx('tracker:' + host)}
                 />
               ))}
+            </div>
+          </>
+        )}
+
+        {/* Labels section */}
+        {(labels.length > 0 || torrents.some(t => t.labels.length === 0)) && (
+          <>
+            <Divider />
+            <div style={{ padding: '4px 6px 8px' }}>
+              <SectionHeader label="Labels" id="labels" collapsed={collapsed} onToggle={toggleSection} />
+              {!collapsed['labels'] && <>
+                <SidebarItem
+                  label="No label"
+                  count={count(t => t.labels.length === 0)}
+                  active={filter === 'no-label'}
+                  onClick={() => onFilter('no-label')}
+                  onContextMenu={ctx('no-label')}
+                  style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}
+                />
+                {labels.map(([lbl, n]) => (
+                  <SidebarItem
+                    key={lbl}
+                    label={lbl}
+                    icon="tag"
+                    count={n}
+                    active={filter === 'label:' + lbl}
+                    onClick={() => onFilter('label:' + lbl)}
+                    onContextMenu={ctx('label:' + lbl)}
+                  />
+                ))}
+              </>}
             </div>
           </>
         )}
@@ -158,6 +232,28 @@ export function Sidebar({ torrents, filter, onFilter }: SidebarProps) {
       >
         <div style={{ width: 1, background: 'var(--border)' }} />
       </div>
+    </div>
+  )
+}
+
+function SectionHeader({ label, id, collapsed, onToggle }: {
+  label: string
+  id: string
+  collapsed: Record<string, boolean>
+  onToggle: (id: string) => void
+}) {
+  return (
+    <div
+      onClick={() => onToggle(id)}
+      style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '4px 8px 4px', cursor: 'pointer', userSelect: 'none' }}
+    >
+      <Icon
+        name={collapsed[id] ? 'chevron-right' : 'chevron-down'}
+        size={11}
+        strokeWidth={2}
+        style={{ color: 'var(--text-muted)', flex: 'none' }}
+      />
+      <span className="section-label">{label}</span>
     </div>
   )
 }

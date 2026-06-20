@@ -10,9 +10,11 @@ import { SettingsDialog } from './SettingsDialog'
 import { TorrentPropertiesDialog } from './TorrentPropertiesDialog'
 import { Dialog } from '../components/feedback/Dialog'
 import { Button } from '../components/controls/Button'
+import { Icon } from '../components/controls/Icon'
 import { Input } from '../components/controls/Input'
 import { ContextMenu, type MenuItem } from '../components/feedback/ContextMenu'
 import * as rpc from '../api/rpc'
+import { AuthRequiredError } from '../api/rpc'
 import type { Torrent, TorrentDetails, SessionInfo } from '../api/types'
 
 type DialogState =
@@ -24,6 +26,11 @@ type DialogState =
   | { kind: 'location'; id: number; current: string }
   | { kind: 'rename'; id: number; name: string }
   | { kind: 'properties'; id: number; name: string }
+  | { kind: 'new-label'; ids: number[] }
+
+function getLabelPresets(): string[] {
+  try { return JSON.parse(localStorage.getItem('transmission-label-presets') ?? '[]') } catch { return [] }
+}
 
 const POLL_INTERVAL = 3000
 
@@ -35,23 +42,38 @@ export function MainWindow() {
   const [selected, setSelected] = useState<number[]>([])
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'addedDate', dir: 'desc' })
   const [menu, setMenu] = useState<{ x: number; y: number; torrent: Torrent } | null>(null)
-  const [detailsH, setDetailsH] = useState(208)
+  const [sidebarMenu, setSidebarMenu] = useState<{ x: number; y: number; filterKey: string } | null>(null)
+  const [detailsH, setDetailsH] = useState<number | undefined>(() => {
+    const v = localStorage.getItem('transmission-details-h')
+    return v ? Number(v) : undefined
+  })
   const [search, setSearch] = useState('')
   const [altSpeed, setAltSpeed] = useState(false)
   const [dialog, setDialog] = useState<DialogState>(null)
   const [locationInput, setLocationInput] = useState('')
   const [renameInput, setRenameInput] = useState('')
+  const [newLabelInput, setNewLabelInput] = useState('')
   const [detailsKey, setDetailsKey] = useState(0)
+  const [authRequired, setAuthRequired] = useState(false)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastClickRef = useRef<number | null>(null)
+
+  const stopPolling = () => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }
 
   const refresh = useCallback(async () => {
     try {
       const list = await rpc.getTorrents()
       setTorrents(list)
-    } catch {
-      // will retry next tick
+      setAuthRequired(false)
+    } catch (e) {
+      if (e instanceof AuthRequiredError) {
+        setAuthRequired(true)
+        stopPolling()
+      }
+      // other errors: will retry next tick
     }
   }, [])
 
@@ -111,6 +133,9 @@ export function MainWindow() {
     if (filter === 'all') return true
     if (filter.startsWith('dir:'))     return t.downloadDir === filter.slice(4)
     if (filter.startsWith('tracker:')) return t.trackers.some(tr => trackerHost(tr.announce) === filter.slice(8))
+    if (filter.startsWith('label:'))   return t.labels.includes(filter.slice(6))
+    if (filter === 'no-label')         return t.labels.length === 0
+    if (filter === 'active')           return t.rateDownload > 0 || t.rateUpload > 0
     return t.status === filter
   })
   view = [...view].sort((a, b) => {
@@ -123,6 +148,30 @@ export function MainWindow() {
 
   const toggleSort = (key: string) =>
     setSort(s => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' })
+
+  // Keyboard navigation: Up/Down arrows move selection through the current view.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+      const tag = (document.activeElement?.tagName ?? '').toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+      if (document.activeElement?.closest('[role="dialog"]')) return
+      e.preventDefault()
+      if (!view.length) return
+
+      const dir = e.key === 'ArrowDown' ? 1 : -1
+      const lastId = lastClickRef.current
+      const currIdx = lastId !== null ? view.findIndex(t => t.id === lastId) : -1
+      const nextIdx = currIdx < 0
+        ? (dir === 1 ? 0 : view.length - 1)
+        : Math.max(0, Math.min(view.length - 1, currIdx + dir))
+      const nextId = view[nextIdx]!.id
+      lastClickRef.current = nextId
+      setSelected([nextId])
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [view])
 
   const selectRow = (id: number, e: React.MouseEvent) => {
     if (e.shiftKey && lastClickRef.current !== null) {
@@ -174,6 +223,24 @@ export function MainWindow() {
   const contextItems = (t: Torrent): MenuItem[] => {
     const ids = selected.includes(t.id) ? selected : [t.id]
     const single = ids.length === 1
+    const selectedTs = torrents.filter(st => ids.includes(st.id))
+
+    // All known labels: from presets + from every torrent currently in the list
+    const allKnownLabels = [...new Set([
+      ...getLabelPresets(),
+      ...torrents.flatMap(st => st.labels),
+    ])].sort()
+
+    const applyLabelToggle = (lbl: string) => {
+      const allHave = selectedTs.every(st => st.labels.includes(lbl))
+      Promise.all(
+        selectedTs.map(st => rpc.setTorrentLabels(
+          st.id,
+          allHave ? st.labels.filter(l => l !== lbl) : [...new Set([...st.labels, lbl])],
+        ))
+      ).then(immediateRefresh).catch(() => {})
+    }
+
     return [
       { label: 'Start',       icon: 'play',       onClick: () => rpc.startTorrents(ids).then(immediateRefresh) },
       { label: 'Force Start', icon: 'zap',        onClick: () => rpc.forceStartTorrents(ids).then(immediateRefresh) },
@@ -200,12 +267,75 @@ export function MainWindow() {
           { label: 'Move to Bottom', onClick: () => rpc.queueMove(ids, 'bottom').then(immediateRefresh) },
         ],
       },
+      {
+        label: 'Labels',
+        icon: 'tag',
+        submenu: [
+          ...allKnownLabels.map(lbl => {
+            const allHave  = selectedTs.every(st => st.labels.includes(lbl))
+            const someHave = selectedTs.some(st => st.labels.includes(lbl))
+            return { label: lbl, icon: allHave ? 'check' : someHave ? 'minus' : undefined, onClick: () => applyLabelToggle(lbl) }
+          }),
+          ...(allKnownLabels.length > 0 ? [{ separator: true }] : []),
+          { label: 'New label…', icon: 'plus', onClick: () => { setNewLabelInput(''); setDialog({ kind: 'new-label', ids }) } },
+        ],
+      },
       { separator: true },
       { label: 'Copy Magnet Link', icon: 'link',    disabled: !single, onClick: () => rpc.getMagnetLink(t.id).then(link => navigator.clipboard.writeText(link)) },
       { label: 'Set Location…',                     disabled: !single, onClick: () => { setLocationInput(t.downloadDir); setDialog({ kind: 'location', id: t.id, current: t.downloadDir }) } },
       { label: 'Rename…',          icon: 'pencil',  disabled: !single, onClick: () => { setRenameInput(t.name); setDialog({ kind: 'rename', id: t.id, name: t.name }) } },
       { separator: true },
       { label: 'Properties…',                       disabled: !single, onClick: () => setDialog({ kind: 'properties', id: t.id, name: t.name }) },
+    ]
+  }
+
+  const getSidebarTorrentIds = (filterKey: string): number[] =>
+    torrents.filter(t => {
+      if (filterKey === 'all')               return true
+      if (filterKey === 'no-label')          return t.labels.length === 0
+      if (filterKey === 'active')            return t.rateDownload > 0 || t.rateUpload > 0
+      if (filterKey.startsWith('dir:'))      return t.downloadDir === filterKey.slice(4)
+      if (filterKey.startsWith('tracker:'))  return t.trackers.some(tr => trackerHost(tr.announce) === filterKey.slice(8))
+      if (filterKey.startsWith('label:'))    return t.labels.includes(filterKey.slice(6))
+      return t.status === filterKey
+    }).map(t => t.id)
+
+  const sidebarContextItems = (filterKey: string): MenuItem[] => {
+    const ids = getSidebarTorrentIds(filterKey)
+    const ts  = torrents.filter(t => ids.includes(t.id))
+    if (!ids.length) return [{ label: 'No torrents in this group', disabled: true }]
+
+    const allKnownLabels = [...new Set([...getLabelPresets(), ...torrents.flatMap(t => t.labels)])].sort()
+    const applyLabel = (lbl: string) => {
+      const allHave = ts.every(t => t.labels.includes(lbl))
+      Promise.all(ts.map(t => rpc.setTorrentLabels(t.id, allHave
+        ? t.labels.filter(l => l !== lbl)
+        : [...new Set([...t.labels, lbl])])
+      )).then(immediateRefresh).catch(() => {})
+    }
+
+    return [
+      { label: 'Start All',    icon: 'play',       onClick: () => rpc.startTorrents(ids).then(immediateRefresh) },
+      { label: 'Stop All',     icon: 'pause',      onClick: () => rpc.stopTorrents(ids).then(immediateRefresh) },
+      { separator: true },
+      { label: 'Re-announce',  icon: 'radio',      onClick: () => rpc.reannounce(ids).then(immediateRefresh) },
+      { label: 'Recheck',      icon: 'refresh-cw', onClick: () => rpc.recheckTorrents(ids).then(immediateRefresh) },
+      { separator: true },
+      {
+        label: 'Labels', icon: 'tag',
+        submenu: [
+          ...allKnownLabels.map(lbl => {
+            const allHave  = ts.every(t => t.labels.includes(lbl))
+            const someHave = ts.some(t => t.labels.includes(lbl))
+            return { label: lbl, icon: allHave ? 'check' : someHave ? 'minus' : undefined, onClick: () => applyLabel(lbl) }
+          }),
+          ...(allKnownLabels.length > 0 ? [{ separator: true }] : []),
+          { label: 'New label…', icon: 'plus', onClick: () => { setNewLabelInput(''); setDialog({ kind: 'new-label', ids }) } },
+        ],
+      },
+      { separator: true },
+      { label: 'Remove All…',         icon: 'trash-2', onClick: () => setDialog({ kind: 'confirm-remove', ids }) },
+      { label: 'Remove With Data…',   icon: 'trash-2', danger: true, onClick: () => setDialog({ kind: 'confirm-data', ids }) },
     ]
   }
 
@@ -249,8 +379,23 @@ export function MainWindow() {
         onToggleAlt={toggleAlt}
       />
 
+      {authRequired && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px', background: 'color-mix(in srgb, var(--status-error) 10%, var(--surface))', borderBottom: '1px solid color-mix(in srgb, var(--status-error) 25%, transparent)', flex: 'none' }}>
+          <Icon name="x" size={14} style={{ color: 'var(--status-error)', flex: 'none' }} />
+          <span style={{ flex: 1, fontSize: 'var(--fs-sm)' }}>
+            Transmission RPC requires authentication. Add your username and password in Settings.
+          </span>
+          <Button size="sm" onClick={() => setDialog('settings')}>Open Settings</Button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <Sidebar torrents={torrents} filter={filter} onFilter={setFilter} />
+        <Sidebar
+          torrents={torrents}
+          filter={filter}
+          onFilter={setFilter}
+          onSidebarContext={(key, x, y) => setSidebarMenu({ filterKey: key, x, y })}
+        />
 
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
           <TorrentTable
@@ -267,7 +412,7 @@ export function MainWindow() {
               torrent={sel}
               details={details}
               height={detailsH}
-              onResize={setDetailsH}
+              onResize={h => { setDetailsH(h); localStorage.setItem('transmission-details-h', String(h)) }}
               onRefreshDetails={refreshDetails}
             />
           )}
@@ -276,13 +421,21 @@ export function MainWindow() {
 
       <StatusBar torrents={torrents} altSpeed={altSpeed} version={session?.version ?? ''} freeSpace={session?.['download-dir-free-space']} />
 
-      {/* Context menu */}
+      {/* Context menus */}
       {menu && (
         <ContextMenu
           x={menu.x}
           y={menu.y}
           items={contextItems(menu.torrent)}
           onClose={() => setMenu(null)}
+        />
+      )}
+      {sidebarMenu && (
+        <ContextMenu
+          x={sidebarMenu.x}
+          y={sidebarMenu.y}
+          items={sidebarContextItems(sidebarMenu.filterKey)}
+          onClose={() => setSidebarMenu(null)}
         />
       )}
 
@@ -292,7 +445,11 @@ export function MainWindow() {
       )}
 
       {dialog === 'settings' && (
-        <SettingsDialog session={session} onClose={() => setDialog(null)} onSave={handleSaveSession} />
+        <SettingsDialog session={session} onClose={() => {
+          setDialog(null)
+          // If polling was paused due to auth error, try again after settings change.
+          if (authRequired) immediateRefresh()
+        }} onSave={handleSaveSession} />
       )}
 
       {dialog && typeof dialog === 'object' && dialog.kind === 'confirm-remove' && (
@@ -343,6 +500,36 @@ export function MainWindow() {
       {dialog && typeof dialog === 'object' && dialog.kind === 'properties' && (
         <TorrentPropertiesDialog torrentId={dialog.id} torrentName={dialog.name} onClose={() => setDialog(null)} />
       )}
+
+      {dialog && typeof dialog === 'object' && dialog.kind === 'new-label' && (() => {
+        const applyNewLabel = async () => {
+          const lbl = newLabelInput.trim()
+          if (!lbl) return
+          const selectedTs = torrents.filter(t => (dialog as { kind: 'new-label'; ids: number[] }).ids.includes(t.id))
+          await Promise.all(selectedTs.map(st => rpc.setTorrentLabels(st.id, [...new Set([...st.labels, lbl])])))
+          immediateRefresh()
+          setDialog(null)
+        }
+        return (
+          <Dialog title="New Label" width={360} onClose={() => setDialog(null)} footer={
+            <>
+              <Button onClick={() => setDialog(null)}>Cancel</Button>
+              <Button variant="primary" onClick={applyNewLabel} disabled={!newLabelInput.trim()}>Apply</Button>
+            </>
+          }>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>Label name</span>
+              <Input
+                value={newLabelInput}
+                onChange={e => setNewLabelInput(e.target.value)}
+                containerStyle={{ width: '100%' }}
+                onKeyDown={e => { if (e.key === 'Enter') applyNewLabel() }}
+                autoFocus
+              />
+            </label>
+          </Dialog>
+        )
+      })()}
 
       {dialog && typeof dialog === 'object' && dialog.kind === 'location' && (
         <Dialog title="Set Location" width={420} onClose={() => setDialog(null)} footer={

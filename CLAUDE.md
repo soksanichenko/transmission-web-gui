@@ -57,6 +57,28 @@ The hook requires data cells to have `data-col={columnIndex}` so auto-fit can me
 ### Tracker filtering
 `Torrent.trackers` (fetched via `TORRENT_FIELDS`) provides tracker URLs for every torrent in the list. `Sidebar.tsx` groups them by hostname (extracted via `new URL(announce).hostname`). `MainWindow.tsx` filters with the `tracker:<hostname>` prefix in the `filter` state string.
 
+### Filter state patterns
+The `filter` string in `MainWindow` follows these conventions:
+- `'all'` — no filter
+- `'active'` — torrents with `rateDownload > 0 || rateUpload > 0`
+- `'<TorrentStatus>'` — exact status match (`'downloading'`, `'seeding'`, `'paused'`, `'checking'`, `'error'`)
+- `'dir:<path>'` — download directory match
+- `'tracker:<hostname>'` — tracker hostname match
+- `'label:<name>'` — torrent has this label
+- `'no-label'` — torrent has no labels (`labels.length === 0`)
+
+### Labels
+Transmission RPC v3.0+ exposes `labels: string[]` on each torrent. They are fetched as part of `TORRENT_FIELDS` and stored on the `Torrent` interface. `rpc.setTorrentLabels(id, labels)` maps to `torrent-set`. The sidebar Labels section shows labels from live torrents plus any presets from `localStorage['transmission-label-presets']`. The context menu Labels submenu uses `check` (all selected have it), `minus` (some have it), or no icon.
+
+### Auth error handling
+`rpc.ts` exports `AuthRequiredError`. All fetches use `credentials: 'omit'` to suppress the browser's native Basic Auth dialog. A 401 response throws `AuthRequiredError`. `MainWindow` catches it in `refresh()`, sets `authRequired` state, and stops polling. A banner renders with an "Open Settings" button; polling resumes after Settings closes with `authRequired` set.
+
+### Sidebar context menu for bulk ops
+Right-clicking any sidebar filter item calls `onSidebarContext(filterKey, x, y)` in `MainWindow`, which opens a `ContextMenu` with bulk actions (Start All, Stop All, Re-announce, Recheck, Labels submenu, Remove All, Remove With Data) scoped to torrents matching that filter key. `getSidebarTorrentIds(filterKey)` mirrors the same filter logic used for the torrent list view.
+
+### Settings unsaved-changes warning
+`SettingsDialog` captures baseline `conn`, `s`, and `labelPresets` in `useRef` at mount time. `isDirty` compares current state to baseline via `JSON.stringify`. Closing via Cancel/Escape/X when dirty shows a confirmation `Dialog` with Keep Editing / Discard / Save & Close options.
+
 ### Context menu submenu pattern
 `ContextMenu` supports `submenu?: MenuItem[]` on any item. Clicking a submenu parent toggles inline expansion (accordion); submenu items render indented below the parent. Do not add hover-triggered flyout submenus.
 
@@ -73,7 +95,7 @@ The hook requires data cells to have `data-col={columnIndex}` so auto-fit can me
 | `frontend/src/api/types.ts` | `Torrent`, `TorrentDetails`, `SessionInfo`, `TorrentTracker` — add new fields here + to `TORRENT_FIELDS` / `DETAILS_FIELDS` |
 | `frontend/src/ui/MainWindow.tsx` | Root component: polling, selection, sort, filter, all dialogs |
 | `frontend/src/ui/TorrentTable.tsx` | 13-column grid; column defs (`COLS`) control label, width, sort key, render; double-click row → Properties |
-| `frontend/src/ui/Sidebar.tsx` | Resizable sidebar with Status / Folders / Trackers sections; tracker list derived from `Torrent.trackers[]` |
+| `frontend/src/ui/Sidebar.tsx` | Resizable sidebar with collapsible Status / Folders / Trackers / Labels sections; right-click items fire `onSidebarContext`; section collapse persisted in `localStorage['transmission-sidebar-sections']` |
 | `frontend/src/ui/DetailsPanel.tsx` | Bottom panel; tabs: Info, Files, Peers, Trackers, Graph; `ResizableHeadRow` is a function-as-hook |
 | `frontend/src/ui/TorrentPropertiesDialog.tsx` | Per-torrent Properties dialog: General (speed/peer/seeding limits) + Trackers tab |
 | `frontend/src/utils/useResizableCols.ts` | Resizable + auto-fit columns; returns `{ widths, template, startResize, autoFit }` |

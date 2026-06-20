@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Dialog } from '../components/feedback/Dialog'
 import { Button } from '../components/controls/Button'
 import { Input } from '../components/controls/Input'
 import { Checkbox } from '../components/controls/Checkbox'
+import { Icon } from '../components/controls/Icon'
 import type { SessionInfo } from '../api/types'
 import { getConnectionConfig, getServerConfig, saveServerConfig, setConnectionConfig } from '../api/config'
 
@@ -19,8 +20,24 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
   const setConnField = (k: keyof typeof conn, v: string) => setConn(p => ({ ...p, [k]: v }))
   const [saving, setSaving] = useState(false)
   const [saveErr, setSaveErr] = useState<string | null>(null)
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
 
-  const [s, setS] = useState({
+  const initialPresets = (): string[] => {
+    try { return JSON.parse(localStorage.getItem('transmission-label-presets') ?? '[]') } catch { return [] }
+  }
+  const [labelPresets, setLabelPresets] = useState<string[]>(initialPresets)
+  const [labelInput, setLabelInput] = useState('')
+
+  const addLabelPreset = () => {
+    const v = labelInput.trim()
+    if (!v || labelPresets.includes(v)) return
+    setLabelPresets(p => [...p, v].sort())
+    setLabelInput('')
+  }
+
+  const removeLabelPreset = (lbl: string) => setLabelPresets(p => p.filter(l => l !== lbl))
+
+  const initS = {
     dlLimited: session?.['speed-limit-down-enabled'] ?? true,
     dlLimit: String(session?.['speed-limit-down'] ?? 2000),
     ulLimited: session?.['speed-limit-up-enabled'] ?? true,
@@ -33,13 +50,28 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
     ratioLimit: String(session?.seedRatioLimit ?? 2.0),
     maxDown: String(session?.['download-queue-size'] ?? 5),
     maxSeed: String(session?.['seed-queue-size'] ?? 10),
-  })
-
+  }
+  const [s, setS] = useState(initS)
   const set = (k: keyof typeof s, v: string | boolean) => setS(p => ({ ...p, [k]: v }))
+
+  // Capture baseline at mount for dirty tracking
+  const initConnRef  = useRef(savedConn)
+  const initSRef     = useRef(initS)
+  const initPresetsRef = useRef(initialPresets())
+
+  const isDirty =
+    JSON.stringify(conn)         !== JSON.stringify(initConnRef.current) ||
+    JSON.stringify(s)            !== JSON.stringify(initSRef.current)    ||
+    JSON.stringify(labelPresets) !== JSON.stringify(initPresetsRef.current)
+
+  const handleClose = () => {
+    if (isDirty) { setShowDiscardConfirm(true) } else { onClose() }
+  }
 
   const handleSave = () => {
     setSaving(true)
     setSaveErr(null)
+    localStorage.setItem('transmission-label-presets', JSON.stringify(labelPresets))
     setConnectionConfig(conn)
     saveServerConfig(conn)
       .catch(err => setSaveErr(String(err)))
@@ -62,10 +94,11 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
   }
 
   return (
+    <>
     <Dialog
       title="Preferences"
       width={500}
-      onClose={onClose}
+      onClose={handleClose}
       footer={
         <>
           {saveErr && (
@@ -73,7 +106,7 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
               {saveErr}
             </span>
           )}
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={handleClose}>Cancel</Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </Button>
@@ -130,8 +163,59 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
             <MiniNum label="Max active seeds"     value={s.maxSeed} onValue={v => set('maxSeed', v)} />
           </div>
         </Group>
+
+        <Group label="Labels">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {labelPresets.length === 0 && (
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>No preset labels. Add labels below to make them available in the context menu.</span>
+            )}
+            {labelPresets.map(lbl => (
+              <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="tag" size={12} style={{ color: 'var(--text-muted)', flex: 'none' }} />
+                <span style={{ flex: 1, fontSize: 'var(--fs-sm)' }}>{lbl}</span>
+                <button
+                  type="button"
+                  onClick={() => removeLabelPreset(lbl)}
+                  title="Remove"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted)', display: 'flex' }}
+                >
+                  <Icon name="x" size={13} />
+                </button>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 6, marginTop: labelPresets.length > 0 ? 4 : 0 }}>
+              <Input
+                value={labelInput}
+                onChange={e => setLabelInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addLabelPreset() }}
+                containerStyle={{ flex: 1 }}
+              />
+              <Button onClick={addLabelPreset} disabled={!labelInput.trim() || labelPresets.includes(labelInput.trim())}>Add</Button>
+            </div>
+          </div>
+        </Group>
       </div>
     </Dialog>
+
+    {showDiscardConfirm && (
+      <Dialog
+        title="Unsaved changes"
+        width={360}
+        onClose={() => setShowDiscardConfirm(false)}
+        footer={
+          <>
+            <Button onClick={() => setShowDiscardConfirm(false)}>Keep editing</Button>
+            <Button onClick={() => { setShowDiscardConfirm(false); onClose() }}>Discard</Button>
+            <Button variant="primary" onClick={handleSave}>Save & close</Button>
+          </>
+        }
+      >
+        <p style={{ margin: 0, fontSize: 'var(--fs-sm)', lineHeight: 1.5 }}>
+          You have unsaved changes. Save before closing?
+        </p>
+      </Dialog>
+    )}
+    </>
   )
 }
 

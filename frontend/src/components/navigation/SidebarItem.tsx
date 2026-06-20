@@ -10,16 +10,18 @@ interface SidebarItemProps {
   indent?: boolean
   mono?: boolean
   onClick?: () => void
+  onContextMenu?: (e: React.MouseEvent) => void
   style?: React.CSSProperties
 }
 
-export function SidebarItem({ label, count, icon, dotColor, active = false, indent = false, mono = false, onClick, style }: SidebarItemProps) {
+export function SidebarItem({ label, count, icon, dotColor, active = false, indent = false, mono = false, onClick, onContextMenu, style }: SidebarItemProps) {
   const [hover, setHover] = useState(false)
 
   return (
     <button
       type="button"
       onClick={onClick}
+      onContextMenu={onContextMenu}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{

@@ -28,6 +28,7 @@ export interface Torrent {
   percentDone: number
   totalSize: number
   downloadedEver: number
+  uploadedEver: number
   rateDownload: number
   rateUpload: number
   leftUntilDone: number
@@ -42,6 +43,7 @@ export interface Torrent {
   error: number
   errorString: string
   trackers: TorrentTracker[]
+  labels: string[]
 }
 
 export interface TorrentFile {
@@ -122,6 +124,7 @@ export const TORRENT_FIELDS = [
   'percentDone',
   'totalSize',
   'downloadedEver',
+  'uploadedEver',
   'rateDownload',
   'rateUpload',
   'leftUntilDone',
@@ -136,6 +139,7 @@ export const TORRENT_FIELDS = [
   'error',
   'errorString',
   'trackers',
+  'labels',
 ] as const
 
 export const DETAILS_FIELDS = [

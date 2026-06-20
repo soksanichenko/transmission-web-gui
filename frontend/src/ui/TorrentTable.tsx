@@ -33,6 +33,7 @@ const COLS: ColDef[] = [
   { key: 'percentDone',    label: 'Progress', defaultW: 150, align: 'left',  minW: 80  },
   { key: 'totalSize',      label: 'Size',     defaultW: 78,  align: 'right', minW: 50  },
   { key: 'downloadedEver', label: 'Done',     defaultW: 78,  align: 'right', minW: 50  },
+  { key: 'uploadedEver',   label: 'Uploaded', defaultW: 78,  align: 'right', minW: 50  },
   { key: 'rateDownload',   label: '↓',        defaultW: 76,  align: 'right', minW: 50  },
   { key: 'rateUpload',     label: '↑',        defaultW: 76,  align: 'right', minW: 50  },
   { key: 'leftUntilDone',  label: 'Left',     defaultW: 78,  align: 'right', minW: 50  },
@@ -53,6 +54,7 @@ function cell(t: Torrent, key: string): React.ReactNode {
       return <ProgressBar value={t.percentDone} status={t.status} showLabel striped={t.status === 'checking'} />
     case 'totalSize':       return num(F.size(t.totalSize))
     case 'downloadedEver':  return num(F.size(t.downloadedEver))
+    case 'uploadedEver':    return num(F.size(t.uploadedEver))
     case 'rateDownload':    return num(F.rate(t.rateDownload), t.rateDownload ? 'var(--status-download)' : undefined)
     case 'rateUpload':      return num(F.rate(t.rateUpload), t.rateUpload ? 'var(--status-seed)' : undefined)
     case 'leftUntilDone':   return num(t.leftUntilDone ? F.size(t.leftUntilDone) : '—')
@@ -81,6 +83,14 @@ export function TorrentTable({ torrents, selected, onSelect, onDoubleClick, onCo
     COLS.map(c => c.minW),
   )
   const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // Scroll the last selected row into view whenever selection changes (no-op if already visible).
+  React.useEffect(() => {
+    const lastId = selected[selected.length - 1]
+    if (lastId === undefined) return
+    const el = containerRef.current?.querySelector<HTMLElement>(`[data-torrent-id="${lastId}"]`)
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [selected])
 
   return (
     <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', background: 'var(--surface)' }}>
@@ -188,6 +198,7 @@ function TorrentRow({ torrent, index, selected, template, onSelect, onDoubleClic
 
   return (
     <div
+      data-torrent-id={torrent.id}
       onClick={e => onSelect(torrent.id, e)}
       onDoubleClick={() => onDoubleClick(torrent)}
       onContextMenu={e => { e.preventDefault(); onContext(torrent, e) }}

@@ -9,22 +9,32 @@ import * as F from '../utils/format'
 import { useResizableCols } from '../utils/useResizableCols'
 import * as rpc from '../api/rpc'
 
+const TAB_BAR_H = 28
+const DRAG_H = 5
+
 interface DetailsPanelProps {
   torrent: Torrent
   details: TorrentDetails | null
-  height: number
+  /** Optional cap; when omitted the panel auto-sizes to InfoTab content. */
+  height?: number
   onResize: (h: number) => void
   onRefreshDetails: () => void
 }
 
 export function DetailsPanel({ torrent, details, height, onResize, onRefreshDetails }: DetailsPanelProps) {
-  const [tab, setTab] = useState('files')
+  const [tab, setTab] = useState(() => localStorage.getItem('transmission-details-tab') ?? 'info')
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  const handleTabChange = (id: string) => {
+    setTab(id)
+    localStorage.setItem('transmission-details-tab', id)
+  }
 
   const startDrag = (e: React.MouseEvent) => {
     e.preventDefault()
     const startY = e.clientY
-    const startH = height
-    const move = (ev: MouseEvent) => onResize(Math.max(120, Math.min(460, startH - (ev.clientY - startY))))
+    const startH = panelRef.current?.getBoundingClientRect().height ?? height ?? 300
+    const move = (ev: MouseEvent) => onResize(Math.max(120, Math.min(600, startH - (ev.clientY - startY))))
     const up = () => {
       document.removeEventListener('mousemove', move)
       document.removeEventListener('mouseup', up)
@@ -33,16 +43,29 @@ export function DetailsPanel({ torrent, details, height, onResize, onRefreshDeta
     document.addEventListener('mouseup', up)
   }
 
+  // When height is set by user drag, cap the scrollable content area.
+  const contentMaxH = height != null ? height - TAB_BAR_H - DRAG_H : undefined
+
   return (
-    <div style={{ height, flex: 'none', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
+    <div
+      ref={panelRef}
+      style={{
+        flex: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--surface)',
+        borderTop: '1px solid var(--border)',
+        ...(height != null ? { maxHeight: height, overflow: 'hidden' } : {}),
+      }}
+    >
       <div
         onMouseDown={startDrag}
-        style={{ height: 5, cursor: 'ns-resize', flex: 'none', background: 'var(--chrome-bg)', borderBottom: '1px solid var(--border)' }}
+        style={{ height: DRAG_H, cursor: 'ns-resize', flex: 'none', background: 'var(--chrome-bg)', borderBottom: '1px solid var(--border)' }}
       />
 
       <Tabs
         value={tab}
-        onChange={setTab}
+        onChange={handleTabChange}
         tabs={[
           { id: 'info',     label: 'Info',     icon: 'info' },
           { id: 'files',    label: 'Files',    icon: 'list',     count: details?.files.length ?? 0 },
@@ -52,12 +75,28 @@ export function DetailsPanel({ torrent, details, height, onResize, onRefreshDeta
         ]}
       />
 
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        {tab === 'info'     && <InfoTab torrent={torrent} details={details} />}
-        {tab === 'files'    && <FilesTab details={details} torrentId={torrent.id} onRefresh={onRefreshDetails} />}
-        {tab === 'peers'    && <PeersTab details={details} />}
-        {tab === 'trackers' && <TrackersTab details={details} />}
-        {tab === 'graph'    && <GraphTab torrent={torrent} />}
+      {/* InfoTab is always in the DOM — its natural height drives the panel size.
+          Other tabs overlay it with position:absolute so they don't change the height. */}
+      <div style={{ position: 'relative' }}>
+        <div
+          style={{
+            visibility: tab === 'info' ? 'visible' : 'hidden',
+            pointerEvents: tab === 'info' ? 'auto' : 'none',
+            overflow: 'auto',
+            ...(contentMaxH != null ? { maxHeight: contentMaxH } : {}),
+          }}
+        >
+          <InfoTab torrent={torrent} details={details} />
+        </div>
+
+        {tab !== 'info' && (
+          <div style={{ position: 'absolute', inset: 0, overflow: 'auto', background: 'var(--surface)' }}>
+            {tab === 'files'    && <FilesTab details={details} torrentId={torrent.id} onRefresh={onRefreshDetails} />}
+            {tab === 'peers'    && <PeersTab details={details} />}
+            {tab === 'trackers' && <TrackersTab details={details} />}
+            {tab === 'graph'    && <GraphTab torrent={torrent} />}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -442,7 +481,7 @@ function Row({
         <span
           style={valueStyle}
           onClick={clickToCopy ? handleCopy : undefined}
-          title={clickToCopy ? (copied ? 'Copied!' : 'Click to copy') : undefined}
+          title={truncate ? value : clickToCopy ? (copied ? 'Copied!' : 'Click to copy') : undefined}
         >
           {copied ? <span style={{ color: 'var(--status-seed)' }}>Copied!</span> : (value || '—')}
         </span>

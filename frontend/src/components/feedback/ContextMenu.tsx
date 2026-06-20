@@ -71,9 +71,11 @@ export function ContextMenu({ items, x, y, onClose, style }: ContextMenuProps) {
               onSubmenuToggle={it.submenu ? () => setOpenSub(isSubOpen ? null : i) : undefined}
               isSubmenuOpen={isSubOpen}
             />
-            {it.submenu && isSubOpen && it.submenu.map((sub, j) => (
-              <MenuItemButton key={j} item={sub} onClose={onClose} indent />
-            ))}
+            {it.submenu && isSubOpen && it.submenu.map((sub, j) =>
+              sub.separator
+                ? <div key={j} style={{ height: 1, background: 'var(--border-faint)', margin: '4px 2px' }} />
+                : <MenuItemButton key={j} item={sub} onClose={onClose} indent />
+            )}
           </React.Fragment>
         )
       })}
