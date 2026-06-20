@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+set -x
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+npm install --prefix "$SCRIPT_DIR/frontend"
+pip install -r "$SCRIPT_DIR/requirements.txt"
+ansible-galaxy collection install -r "$SCRIPT_DIR/ansible/requirements.yml"
+
+INFISICAL_BINARY="/usr/bin/infisical"
+
+if [[ ! -f "$INFISICAL_BINARY" ]]; then
+    echo "Installing infisical CLI..."
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.rpm.sh' | sudo bash
+    sudo dnf install -y infisical
+    echo "infisical CLI installed"
+fi

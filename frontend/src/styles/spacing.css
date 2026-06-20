@@ -1,0 +1,38 @@
+/* ============================================================
+   SPACING & RADII — Transmission UI. Dense 4px base grid.
+   ============================================================ */
+
+:root {
+  --sp-1:  2px;
+  --sp-2:  4px;
+  --sp-3:  6px;
+  --sp-4:  8px;
+  --sp-5:  10px;
+  --sp-6:  12px;
+  --sp-8:  16px;
+  --sp-10: 20px;
+  --sp-12: 24px;
+  --sp-16: 32px;
+
+  --row-h:        24px;
+  --row-h-compact:20px;
+  --header-h:     26px;
+  --toolbar-h:    40px;
+  --statusbar-h:  26px;
+  --control-h:    26px;
+  --control-h-sm: 22px;
+  --sidebar-w:    188px;
+
+  --cell-pad-x:   8px;
+  --cell-pad-y:   3px;
+
+  --r-0:   0;
+  --r-1:   2px;
+  --r-2:   3px;
+  --r-3:   4px;
+  --r-4:   6px;
+  --r-pill:999px;
+
+  --bar-h:   12px;
+  --bar-r:   2px;
+}

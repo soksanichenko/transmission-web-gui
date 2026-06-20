@@ -1,0 +1,130 @@
+/* ============================================================
+   COLORS — Transmission UI
+   Light is the base; dark overrides via prefers-color-scheme.
+   ============================================================ */
+
+:root {
+  --gray-0:  #ffffff;
+  --gray-50: #f6f7f8;
+  --gray-100:#eef0f2;
+  --gray-150:#e6e8ec;
+  --gray-200:#dadde2;
+  --gray-300:#c3c8d0;
+  --gray-400:#9aa1ab;
+  --gray-500:#727a85;
+  --gray-600:#545b65;
+  --gray-700:#3a3f47;
+  --gray-800:#262a30;
+  --gray-900:#181b1f;
+  --gray-950:#101216;
+
+  --accent-100:#dce8ff;
+  --accent-200:#b6d0ff;
+  --accent-400:#5b8def;
+  --accent-500:#2f6fed;
+  --accent-600:#1f57c8;
+  --accent-700:#184a9e;
+
+  --hue-download:#2f6fed;
+  --hue-seed:    #1f9d57;
+  --hue-paused:  #8a9099;
+  --hue-check:   #d98a00;
+  --hue-error:   #dc3a3a;
+  --hue-queued:  #7a5bd6;
+
+  /* Semantic aliases (light) */
+  --app-bg:        var(--gray-100);
+  --surface:       var(--gray-0);
+  --surface-alt:   var(--gray-50);
+  --surface-sunken:var(--gray-100);
+
+  --chrome-bg:     var(--gray-50);
+  --chrome-grad-1: #fcfcfd;
+  --chrome-grad-2: #e9ebef;
+
+  --border:        var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-faint:  var(--gray-150);
+
+  --text:          var(--gray-900);
+  --text-secondary:var(--gray-500);
+  --text-muted:    var(--gray-400);
+  --text-on-accent:#ffffff;
+
+  --row-stripe:    var(--gray-50);
+  --row-hover:     var(--accent-100);
+  --row-selected:  var(--accent-200);
+  --row-selected-text: var(--gray-900);
+
+  --focus-ring:    var(--accent-500);
+
+  --track:         var(--gray-200);
+  --fill-download: var(--hue-download);
+  --fill-seed:     var(--hue-seed);
+  --fill-paused:   var(--gray-400);
+  --fill-check:    var(--hue-check);
+  --fill-error:    var(--hue-error);
+
+  --status-download: var(--hue-download);
+  --status-seed:     var(--hue-seed);
+  --status-paused:   var(--gray-500);
+  --status-check:    var(--hue-check);
+  --status-error:    var(--hue-error);
+  --status-queued:   var(--hue-queued);
+
+  --status-download-bg:#e2ecfe;
+  --status-seed-bg:    #ddf3e6;
+  --status-paused-bg:  #eceef1;
+  --status-check-bg:   #fbeccc;
+  --status-error-bg:   #fbe0e0;
+  --status-queued-bg:  #ebe4fa;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg:        var(--gray-950);
+    --surface:       var(--gray-900);
+    --surface-alt:   #1d2025;
+    --surface-sunken:var(--gray-950);
+
+    --chrome-bg:     var(--gray-800);
+    --chrome-grad-1: #2c3138;
+    --chrome-grad-2: #20242a;
+
+    --border:        #2e333b;
+    --border-strong: #3c424c;
+    --border-faint:  #23272e;
+
+    --text:          var(--gray-100);
+    --text-secondary:var(--gray-400);
+    --text-muted:    var(--gray-500);
+
+    --row-stripe:    #1c1f24;
+    --row-hover:     rgba(47,111,237,0.16);
+    --row-selected:  rgba(47,111,237,0.30);
+    --row-selected-text: var(--gray-50);
+
+    --focus-ring:    var(--accent-400);
+
+    --track:         #2c313a;
+    --fill-download: #4c86f2;
+    --fill-seed:     #34b66e;
+    --fill-paused:   #5a616b;
+    --fill-check:    #e3a426;
+    --fill-error:    #e85656;
+
+    --status-download:#6ea2f5;
+    --status-seed:    #45c47c;
+    --status-paused:  var(--gray-400);
+    --status-check:   #e3a426;
+    --status-error:   #ec6a6a;
+    --status-queued:  #9a82e3;
+
+    --status-download-bg:rgba(47,111,237,0.18);
+    --status-seed-bg:    rgba(31,157,87,0.20);
+    --status-paused-bg:  rgba(138,144,153,0.18);
+    --status-check-bg:   rgba(217,138,0,0.20);
+    --status-error-bg:   rgba(220,58,58,0.20);
+    --status-queued-bg:  rgba(122,91,214,0.20);
+  }
+}

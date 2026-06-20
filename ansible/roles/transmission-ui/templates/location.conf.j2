@@ -1,0 +1,20 @@
+# Proxied before the static location to take precedence
+location /transmission-ui/api/ {
+    auth_basic "homeserver";
+    auth_basic_user_file {{ nginx_confd_container_path }}/htpasswd/homeserver-access.htpasswd;
+    proxy_pass            http://transmission_ui_config_api/;
+    proxy_set_header      Host              $host;
+    proxy_set_header      X-Real-IP         $remote_addr;
+    proxy_set_header      X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header      X-Forwarded-Proto $scheme;
+    proxy_read_timeout    10s;
+    proxy_connect_timeout 5s;
+}
+
+location /transmission-ui/ {
+    auth_basic "homeserver";
+    auth_basic_user_file {{ nginx_confd_container_path }}/htpasswd/homeserver-access.htpasswd;
+    root       /usr/share/nginx/html;
+    try_files  $uri $uri/ /transmission-ui/index.html;
+    add_header Cache-Control "no-cache" always;
+}

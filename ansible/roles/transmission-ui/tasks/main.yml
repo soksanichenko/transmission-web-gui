@@ -1,0 +1,102 @@
+---
+- name: Build Vite frontend locally
+  ansible.builtin.command:
+    cmd: npm run build
+    chdir: "{{ playbook_dir }}/../../frontend"
+  delegate_to: localhost
+  become: no
+  changed_when: true
+
+- name: Create transmission-ui app directory
+  ansible.builtin.file:
+    path: "{{ transmission_ui_app_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: yes
+
+- name: Create transmission-ui static directory (nginx-accessible, user-owned for rsync)
+  ansible.builtin.file:
+    path: "{{ nginx_html_path }}/transmission-ui"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  become: yes
+
+- name: Sync frontend static files to nginx html directory
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../frontend/dist/"
+    dest: "{{ nginx_html_path }}/transmission-ui/"
+    delete: yes
+    rsync_opts:
+      - "--exclude=config.json"
+  notify: Reload nginx
+
+- name: Sync backend source to app directory
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../backend/"
+    dest: "{{ transmission_ui_app_dir }}/backend/"
+    delete: yes
+    rsync_opts:
+      - "--exclude=__pycache__/"
+      - "--exclude=*.pyc"
+  register: _backend_sync
+
+- name: Template initial config.json (skipped if file already exists)
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ transmission_ui_app_dir }}/config.json"
+    mode: '0600'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    force: no
+  become: yes
+
+- name: Build config-api Docker image
+  community.docker.docker_image:
+    name: "{{ transmission_ui_config_api_image }}"
+    tag: latest
+    source: build
+    build:
+      path: "{{ transmission_ui_app_dir }}/backend"
+      pull: false
+    force_source: "{{ _backend_sync.changed }}"
+  become: yes
+
+- name: Deploy config-api container
+  community.docker.docker_container:
+    name: "{{ transmission_ui_config_api_name }}"
+    image: "{{ transmission_ui_config_api_image }}:latest"
+    state: started
+    restart_policy: unless-stopped
+    recreate: "{{ _backend_sync.changed }}"
+    networks:
+      - name: "{{ docker_network }}"
+    mounts:
+      - source: "{{ transmission_ui_app_dir }}"
+        target: /data
+        read_only: no
+        type: bind
+    env:
+      CONFIG_PATH: /data/config.json
+    log_driver: journald
+  become: yes
+
+- name: Deploy nginx upstream config
+  ansible.builtin.template:
+    src: upstream.conf.j2
+    dest: "{{ nginx_custom_upstream_path }}/transmission-ui.conf"
+    mode: '0644'
+  become: yes
+  notify: Reload nginx
+
+- name: Deploy nginx location config
+  ansible.builtin.template:
+    src: location.conf.j2
+    dest: "{{ nginx_domain_custom_locations_path }}/transmission-ui.conf"
+    mode: '0644'
+  become: yes
+  notify: Reload nginx
+...
