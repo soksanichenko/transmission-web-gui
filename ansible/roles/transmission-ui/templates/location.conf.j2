@@ -15,6 +15,7 @@ location /transmission-ui/ {
     auth_basic "homeserver";
     auth_basic_user_file {{ nginx_confd_container_path }}/htpasswd/homeserver-access.htpasswd;
     root       /usr/share/nginx/html;
-    try_files  $uri $uri/ /transmission-ui/index.html;
+    index      index.html;
+    try_files  $uri $uri/ =404;
     add_header Cache-Control "no-cache" always;
 }
