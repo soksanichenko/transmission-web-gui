@@ -18,7 +18,7 @@
 
 - name: Create transmission-ui static directory (nginx-accessible, user-owned for rsync)
   ansible.builtin.file:
-    path: "{{ nginx_html_path }}/transmission-ui"
+    path: "{{ nginx_html_path }}/static/transmission-ui"
     state: directory
     mode: '0755'
     owner: "{{ ansible_user }}"
@@ -28,7 +28,7 @@
 - name: Sync frontend static files to nginx html directory
   ansible.posix.synchronize:
     src: "{{ playbook_dir }}/../../frontend/dist/"
-    dest: "{{ nginx_html_path }}/transmission-ui/"
+    dest: "{{ nginx_html_path }}/static/transmission-ui/"
     delete: yes
     rsync_opts:
       - "--exclude=config.json"
