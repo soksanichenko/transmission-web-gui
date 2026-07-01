@@ -85,6 +85,9 @@ Right-clicking any sidebar filter item calls `onSidebarContext(filterKey, x, y)`
 ### Per-torrent properties
 `TorrentPropertiesDialog` fetches its own data on mount via `rpc.getTorrentProps()` (separate `torrent-get` call with only the needed fields). It does not rely on the `details` state in `MainWindow`. Save calls `rpc.saveTorrentProps()` which maps to `torrent-set`.
 
+### Backend linting
+`backend/` is linted by ruff via `.pre-commit-config.yaml` (ruff check + ruff-format). `pyproject.toml` pins `quote-style = "single"` under `[tool.ruff.format]` — ruff's default is double quotes, which conflicts with this project's single-quote convention for Python.
+
 ## Key files
 
 | File | Purpose |

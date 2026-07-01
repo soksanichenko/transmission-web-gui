@@ -37,8 +37,14 @@ def get_config() -> dict:
 def save_config(cfg: ConnectionConfig) -> dict:
     try:
         CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        data = {'rpcUrl': cfg.rpcUrl, 'username': cfg.username, 'password': cfg.password}
-        CONFIG_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+        data = {
+            'rpcUrl': cfg.rpcUrl,
+            'username': cfg.username,
+            'password': cfg.password,
+        }
+        CONFIG_PATH.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8'
+        )
         logger.info('Config saved to %s', CONFIG_PATH)
         return {'ok': True}
     except Exception as exc:

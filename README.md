@@ -67,6 +67,15 @@ The dev server is available at `http://localhost:5173/transmission-ui/`.
 
 Transmission must be running locally on port 9091, or you can change the RPC URL via **Preferences → Connection** in the UI after startup.
 
+### Linting
+
+The backend is linted with [ruff](https://github.com/astral-sh/ruff) via a pre-commit hook.
+
+```bash
+pre-commit install        # one-time, wires the git hook
+pre-commit run --all-files
+```
+
 ### Running the config-api backend locally
 
 The backend serves and persists the connection config (`config.json`).
@@ -174,6 +183,11 @@ Auth is handled by the existing `homeserver-access.htpasswd` managed in the `inf
 │   └── roles/transmission-ui/
 ├── docker/
 │   └── nginx.conf             # Local dev only (used by docker-compose.yml)
+├── .github/
+│   ├── workflows/lint.yml     # ruff check + format check on backend/
+│   └── dependabot.yml         # pip, npm (frontend/), github-actions
+├── .pre-commit-config.yaml    # ruff + ruff-format hooks, scoped to backend/
+├── pyproject.toml             # ruff config (quote-style = single)
 ├── install_dependencies.sh
 └── docker-compose.yml         # For local standalone testing
 ```
