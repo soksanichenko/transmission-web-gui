@@ -4,7 +4,7 @@ location /transmission-ui/api/ {
     auth_basic_user_file {{ nginx_confd_container_path }}/htpasswd/homeserver-access.htpasswd;
     proxy_pass            http://transmission_ui_config_api/;
     proxy_set_header      Host              $host;
-    proxy_set_header      X-Real-IP         $remote_addr;
+    proxy_set_header      X-Real-IP         $client_real_ip;
     proxy_set_header      X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header      X-Forwarded-Proto $scheme;
     proxy_read_timeout    10s;
