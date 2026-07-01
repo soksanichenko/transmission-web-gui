@@ -2,9 +2,9 @@ import React, { useRef, useState } from 'react'
 import { Dialog } from '../components/feedback/Dialog'
 import { Button } from '../components/controls/Button'
 import { Input } from '../components/controls/Input'
-import { Select } from '../components/controls/Select'
 import { Checkbox } from '../components/controls/Checkbox'
 import { Icon } from '../components/controls/Icon'
+import { ContextMenu } from '../components/feedback/ContextMenu'
 
 interface AddDialogProps {
   dirs: string[]
@@ -19,6 +19,7 @@ export function AddDialog({ dirs, onClose, onAdd }: AddDialogProps) {
   const [fileName, setFileName] = useState<string | null>(null)
   const [fileData, setFileData] = useState<string | null>(null)
   const [drag, setDrag] = useState(false)
+  const [dirMenuPos, setDirMenuPos] = useState<{ x: number; y: number } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const readFile = (f: File) => {
@@ -98,8 +99,40 @@ export function AddDialog({ dirs, onClose, onAdd }: AddDialogProps) {
         </Field>
 
         <Field label="Download folder">
-          <Select value={dir} onChange={e => setDir(e.target.value)} options={dirs} containerStyle={{ width: '100%' }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Input
+              mono
+              list="add-dialog-dirs"
+              value={dir}
+              onChange={e => setDir(e.target.value)}
+              containerStyle={{ flex: 1 }}
+            />
+            <datalist id="add-dialog-dirs">
+              {dirs.map(d => <option key={d} value={d} />)}
+            </datalist>
+            <Button
+              onClick={e => {
+                const r = e.currentTarget.getBoundingClientRect()
+                setDirMenuPos({ x: r.right, y: r.bottom + 4 })
+              }}
+            >
+              <Icon name="chevron-down" size={13} />
+            </Button>
+          </div>
         </Field>
+        {dirMenuPos && (
+          <ContextMenu
+            x={dirMenuPos.x}
+            y={dirMenuPos.y}
+            style={{ transform: 'translateX(-100%)' }}
+            items={
+              dirs.length > 0
+                ? dirs.map(d => ({ label: d, onClick: () => setDir(d) }))
+                : [{ label: 'No known folders yet', disabled: true }]
+            }
+            onClose={() => setDirMenuPos(null)}
+          />
+        )}
 
         <Checkbox label="Add paused" checked={paused} onChange={e => setPaused(e.target.checked)} />
       </div>

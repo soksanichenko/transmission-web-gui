@@ -37,6 +37,21 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
 
   const removeLabelPreset = (lbl: string) => setLabelPresets(p => p.filter(l => l !== lbl))
 
+  const initialDirPresets = (): string[] => {
+    try { return JSON.parse(localStorage.getItem('transmission-dir-presets') ?? '[]') } catch { return [] }
+  }
+  const [dirPresets, setDirPresets] = useState<string[]>(initialDirPresets)
+  const [dirInput, setDirInput] = useState('')
+
+  const addDirPreset = () => {
+    const v = dirInput.trim()
+    if (!v || dirPresets.includes(v)) return
+    setDirPresets(p => [...p, v].sort())
+    setDirInput('')
+  }
+
+  const removeDirPreset = (dir: string) => setDirPresets(p => p.filter(d => d !== dir))
+
   const initS = {
     dlLimited: session?.['speed-limit-down-enabled'] ?? true,
     dlLimit: String(session?.['speed-limit-down'] ?? 2000),
@@ -58,11 +73,13 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
   const initConnRef  = useRef(savedConn)
   const initSRef     = useRef(initS)
   const initPresetsRef = useRef(initialPresets())
+  const initDirPresetsRef = useRef(initialDirPresets())
 
   const isDirty =
     JSON.stringify(conn)         !== JSON.stringify(initConnRef.current) ||
     JSON.stringify(s)            !== JSON.stringify(initSRef.current)    ||
-    JSON.stringify(labelPresets) !== JSON.stringify(initPresetsRef.current)
+    JSON.stringify(labelPresets) !== JSON.stringify(initPresetsRef.current) ||
+    JSON.stringify(dirPresets)   !== JSON.stringify(initDirPresetsRef.current)
 
   const handleClose = () => {
     if (isDirty) { setShowDiscardConfirm(true) } else { onClose() }
@@ -72,6 +89,7 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
     setSaving(true)
     setSaveErr(null)
     localStorage.setItem('transmission-label-presets', JSON.stringify(labelPresets))
+    localStorage.setItem('transmission-dir-presets', JSON.stringify(dirPresets))
     setConnectionConfig(conn)
     saveServerConfig(conn)
       .catch(err => setSaveErr(String(err)))
@@ -191,6 +209,38 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
                 containerStyle={{ flex: 1 }}
               />
               <Button onClick={addLabelPreset} disabled={!labelInput.trim() || labelPresets.includes(labelInput.trim())}>Add</Button>
+            </div>
+          </div>
+        </Group>
+
+        <Group label="Folders">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {dirPresets.length === 0 && (
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>No preset folders. Add paths below to make them available when adding a torrent.</span>
+            )}
+            {dirPresets.map(dir => (
+              <div key={dir} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="folder" size={12} style={{ color: 'var(--text-muted)', flex: 'none' }} />
+                <span style={{ flex: 1, fontSize: 'var(--fs-sm)', fontFamily: 'var(--font-mono)' }}>{dir}</span>
+                <button
+                  type="button"
+                  onClick={() => removeDirPreset(dir)}
+                  title="Remove"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted)', display: 'flex' }}
+                >
+                  <Icon name="x" size={13} />
+                </button>
+              </div>
+            ))}
+            <div style={{ display: 'flex', gap: 6, marginTop: dirPresets.length > 0 ? 4 : 0 }}>
+              <Input
+                mono
+                value={dirInput}
+                onChange={e => setDirInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') addDirPreset() }}
+                containerStyle={{ flex: 1 }}
+              />
+              <Button onClick={addDirPreset} disabled={!dirInput.trim() || dirPresets.includes(dirInput.trim())}>Add</Button>
             </div>
           </div>
         </Group>

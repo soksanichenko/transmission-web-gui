@@ -51,7 +51,7 @@ function cell(t: Torrent, key: string): React.ReactNode {
     case 'name':
       return <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
     case 'percentDone':
-      return <ProgressBar value={t.percentDone} status={t.status} showLabel striped={t.status === 'checking'} />
+      return <ProgressBar value={t.status === 'checking' ? t.recheckProgress : t.percentDone} status={t.status} showLabel striped={t.status === 'checking'} />
     case 'totalSize':       return num(F.size(t.totalSize))
     case 'downloadedEver':  return num(F.size(t.downloadedEver))
     case 'uploadedEver':    return num(F.size(t.uploadedEver))

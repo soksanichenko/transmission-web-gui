@@ -32,6 +32,10 @@ function getLabelPresets(): string[] {
   try { return JSON.parse(localStorage.getItem('transmission-label-presets') ?? '[]') } catch { return [] }
 }
 
+function getDirPresets(): string[] {
+  try { return JSON.parse(localStorage.getItem('transmission-dir-presets') ?? '[]') } catch { return [] }
+}
+
 const POLL_INTERVAL = 3000
 
 export function MainWindow() {
@@ -59,10 +63,6 @@ export function MainWindow() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastClickRef = useRef<number | null>(null)
 
-  const stopPolling = () => {
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
-  }
-
   const refresh = useCallback(async () => {
     try {
       const list = await rpc.getTorrents()
@@ -71,9 +71,8 @@ export function MainWindow() {
     } catch (e) {
       if (e instanceof AuthRequiredError) {
         setAuthRequired(true)
-        stopPolling()
       }
-      // other errors: will retry next tick
+      // will retry next tick — self-heals once the RPC endpoint is reachable again
     }
   }, [])
 
@@ -113,6 +112,11 @@ export function MainWindow() {
 
   const refreshDetails = useCallback(() => setDetailsKey(k => k + 1), [])
 
+  // Keep per-file progress live while the selected torrent is being checked.
+  useEffect(() => {
+    if (torrents.find(t => t.id === selected[0])?.status === 'checking') refreshDetails()
+  }, [torrents, selected, refreshDetails])
+
   // Dynamic page title
   useEffect(() => {
     const down = torrents.reduce((s, t) => s + t.rateDownload, 0)
@@ -149,29 +153,64 @@ export function MainWindow() {
   const toggleSort = (key: string) =>
     setSort(s => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' })
 
-  // Keyboard navigation: Up/Down arrows move selection through the current view.
+  // Keyboard shortcuts: Up/Down navigate selection, Insert adds a torrent,
+  // Delete/Shift+Delete remove, F2 renames, Alt+Enter opens Properties.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
       const tag = (document.activeElement?.tagName ?? '').toLowerCase()
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return
       if (document.activeElement?.closest('[role="dialog"]')) return
-      e.preventDefault()
-      if (!view.length) return
 
-      const dir = e.key === 'ArrowDown' ? 1 : -1
-      const lastId = lastClickRef.current
-      const currIdx = lastId !== null ? view.findIndex(t => t.id === lastId) : -1
-      const nextIdx = currIdx < 0
-        ? (dir === 1 ? 0 : view.length - 1)
-        : Math.max(0, Math.min(view.length - 1, currIdx + dir))
-      const nextId = view[nextIdx]!.id
-      lastClickRef.current = nextId
-      setSelected([nextId])
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (!view.length) return
+
+        const dir = e.key === 'ArrowDown' ? 1 : -1
+        const lastId = lastClickRef.current
+        const currIdx = lastId !== null ? view.findIndex(t => t.id === lastId) : -1
+        const nextIdx = currIdx < 0
+          ? (dir === 1 ? 0 : view.length - 1)
+          : Math.max(0, Math.min(view.length - 1, currIdx + dir))
+        const nextId = view[nextIdx]!.id
+        lastClickRef.current = nextId
+        setSelected([nextId])
+        return
+      }
+
+      if (e.key === 'Insert') {
+        e.preventDefault()
+        setDialog('add')
+        return
+      }
+
+      if (e.key === 'Delete') {
+        if (!selected.length) return
+        e.preventDefault()
+        setDialog(e.shiftKey ? { kind: 'confirm-data', ids: selected } : { kind: 'confirm-remove', ids: selected })
+        return
+      }
+
+      if (e.key === 'F2') {
+        if (selected.length !== 1) return
+        const t = torrents.find(x => x.id === selected[0])
+        if (!t) return
+        e.preventDefault()
+        setRenameInput(t.name)
+        setDialog({ kind: 'rename', id: t.id, name: t.name })
+        return
+      }
+
+      if (e.key === 'Enter' && e.altKey) {
+        if (selected.length !== 1) return
+        const t = torrents.find(x => x.id === selected[0])
+        if (!t) return
+        e.preventDefault()
+        setDialog({ kind: 'properties', id: t.id, name: t.name })
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [view])
+  }, [view, selected, torrents])
 
   const selectRow = (id: number, e: React.MouseEvent) => {
     if (e.shiftKey && lastClickRef.current !== null) {
@@ -246,8 +285,8 @@ export function MainWindow() {
       { label: 'Force Start', icon: 'zap',        onClick: () => rpc.forceStartTorrents(ids).then(immediateRefresh) },
       { label: 'Stop',        icon: 'pause',      onClick: () => rpc.stopTorrents(ids).then(immediateRefresh) },
       { separator: true },
-      { label: 'Remove',             icon: 'trash-2',    onClick: () => setDialog({ kind: 'confirm-remove', ids }) },
-      { label: 'Remove With Data…',  icon: 'trash-2',    danger: true, onClick: () => setDialog({ kind: 'confirm-data', ids }) },
+      { label: 'Remove',             icon: 'trash-2',    shortcut: 'Del',       onClick: () => setDialog({ kind: 'confirm-remove', ids }) },
+      { label: 'Remove With Data…',  icon: 'trash-2',    shortcut: 'Shift+Del', danger: true, onClick: () => setDialog({ kind: 'confirm-data', ids }) },
       { separator: true },
       { label: 'Re-announce',  icon: 'radio',      onClick: () => rpc.reannounce(ids).then(immediateRefresh) },
       { label: 'Recheck',      icon: 'refresh-cw', onClick: () => rpc.recheckTorrents(ids).then(immediateRefresh) },
@@ -283,9 +322,9 @@ export function MainWindow() {
       { separator: true },
       { label: 'Copy Magnet Link', icon: 'link',    disabled: !single, onClick: () => rpc.getMagnetLink(t.id).then(link => navigator.clipboard.writeText(link)) },
       { label: 'Set Location…',                     disabled: !single, onClick: () => { setLocationInput(t.downloadDir); setDialog({ kind: 'location', id: t.id, current: t.downloadDir }) } },
-      { label: 'Rename…',          icon: 'pencil',  disabled: !single, onClick: () => { setRenameInput(t.name); setDialog({ kind: 'rename', id: t.id, name: t.name }) } },
+      { label: 'Rename…',          icon: 'pencil',  shortcut: 'F2',        disabled: !single, onClick: () => { setRenameInput(t.name); setDialog({ kind: 'rename', id: t.id, name: t.name }) } },
       { separator: true },
-      { label: 'Properties…',                       disabled: !single, onClick: () => setDialog({ kind: 'properties', id: t.id, name: t.name }) },
+      { label: 'Properties…',                       shortcut: 'Alt+Enter', disabled: !single, onClick: () => setDialog({ kind: 'properties', id: t.id, name: t.name }) },
     ]
   }
 
@@ -364,7 +403,7 @@ export function MainWindow() {
   }
 
   const sel = torrents.find(t => t.id === selected[0])
-  const dirs = [...new Set(torrents.map(t => t.downloadDir))].sort()
+  const dirs = [...new Set([...getDirPresets(), ...torrents.map(t => t.downloadDir)])].sort()
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--app-bg)', color: 'var(--text)', overflow: 'hidden' }}>

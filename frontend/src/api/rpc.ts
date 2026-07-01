@@ -56,6 +56,7 @@ interface RawTorrent {
   id: number
   name: string
   percentDone: number
+  recheckProgress: number
   totalSize: number
   downloadedEver: number
   uploadedEver: number
