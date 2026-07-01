@@ -70,14 +70,23 @@ The `filter` string in `MainWindow` follows these conventions:
 ### Labels
 Transmission RPC v3.0+ exposes `labels: string[]` on each torrent. They are fetched as part of `TORRENT_FIELDS` and stored on the `Torrent` interface. `rpc.setTorrentLabels(id, labels)` maps to `torrent-set`. The sidebar Labels section shows labels from live torrents plus any presets from `localStorage['transmission-label-presets']`. The context menu Labels submenu uses `check` (all selected have it), `minus` (some have it), or no icon.
 
+### Folder presets
+`localStorage['transmission-dir-presets']` stores a user-defined list of download folder paths, managed in `SettingsDialog` (Folders group) with the same add/remove pattern as label presets. `MainWindow.tsx`'s `dirs` list (passed to `AddDialog`) merges these presets with every `downloadDir` currently in use by live torrents. `AddDialog`'s folder field is a free-text `Input` (with a `<datalist>` for browser autocomplete) plus a chevron button that opens a `ContextMenu` populated from `dirs` — clicking an entry fills the input, but any path can still be typed manually.
+
+### Checking / recheck progress
+Transmission reports verification progress via `recheckProgress` (0–1), separate from `percentDone` which stays at its pre-check value until verification finishes. `TORRENT_FIELDS` fetches `recheckProgress`; `TorrentTable`'s Progress column renders `recheckProgress` instead of `percentDone` whenever `status === 'checking'`. Because polling only refetches `TorrentDetails` (used by the Files tab's per-file bars) on selection change or `refreshDetails()`, `MainWindow` also bumps `detailsKey` on every poll tick while the selected torrent's status is `'checking'`, so per-file progress stays live too.
+
 ### Auth error handling
-`rpc.ts` exports `AuthRequiredError`. All fetches use `credentials: 'omit'` to suppress the browser's native Basic Auth dialog. A 401 response throws `AuthRequiredError`. `MainWindow` catches it in `refresh()`, sets `authRequired` state, and stops polling. A banner renders with an "Open Settings" button; polling resumes after Settings closes with `authRequired` set.
+`rpc.ts` exports `AuthRequiredError`. All fetches use `credentials: 'omit'` to suppress the browser's native Basic Auth dialog. A 401 response throws `AuthRequiredError`. `MainWindow` catches it in `refresh()` and sets `authRequired` state, but keeps polling every 3 s like any other failed tick — this lets the app self-heal automatically once the RPC endpoint is reachable again (e.g. after a redeploy), without requiring the user to open Settings. A banner renders with an "Open Settings" button while `authRequired` is true.
 
 ### Sidebar context menu for bulk ops
 Right-clicking any sidebar filter item calls `onSidebarContext(filterKey, x, y)` in `MainWindow`, which opens a `ContextMenu` with bulk actions (Start All, Stop All, Re-announce, Recheck, Labels submenu, Remove All, Remove With Data) scoped to torrents matching that filter key. `getSidebarTorrentIds(filterKey)` mirrors the same filter logic used for the torrent list view.
 
 ### Settings unsaved-changes warning
 `SettingsDialog` captures baseline `conn`, `s`, and `labelPresets` in `useRef` at mount time. `isDirty` compares current state to baseline via `JSON.stringify`. Closing via Cancel/Escape/X when dirty shows a confirmation `Dialog` with Keep Editing / Discard / Save & Close options.
+
+### Keyboard shortcuts
+Global `keydown` listener in `MainWindow` (ignored while focus is on an `input`/`textarea`/`select` or inside an open dialog): Up/Down navigate the current view's selection, `Insert` opens Add Torrent, `Delete`/`Shift+Delete` open the Remove / Remove With Data confirm dialogs for the current selection, `F2` opens Rename, and `Alt+Enter` opens Properties (the latter two require exactly one selected torrent). The per-torrent `ContextMenu` shows these as `shortcut` hints on the matching `MenuItem`s (`ContextMenu`/`MenuItemButton` already render `item.shortcut` if present).
 
 ### Context menu submenu pattern
 `ContextMenu` supports `submenu?: MenuItem[]` on any item. Clicking a submenu parent toggles inline expansion (accordion); submenu items render indented below the parent. Do not add hover-triggered flyout submenus.

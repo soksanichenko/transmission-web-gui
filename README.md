@@ -12,7 +12,7 @@ A dense, information-rich web UI for the [Transmission](https://transmissionbt.c
 
 - Torrent list with 13 sortable, resizable columns (double-click a column border to auto-fit)
 - Sidebar with four collapsible filter sections — Status, Folders, Trackers, Labels; right-click any section item for bulk operations
-- **Status filters**: All, Active (downloading or uploading right now), Downloading, Seeding, Paused, Checking, Error
+- **Status filters**: All, Active (downloading or uploading right now), Downloading, Seeding, Paused, Checking, Queued, Error
 - Detail panel with Info, Files, Peers, Trackers, and Speed Graph tabs — all with resizable columns
 - **Info tab**: transfer stats, connection counts, limits, torrent metadata (hash, pieces, magnet, trackers, comment)
 - **Files tab**: per-file progress, multi-select (click / Ctrl+click / Shift+click), right-click menu to set Download/Skip and priority (High / Normal / Low)
@@ -22,11 +22,12 @@ A dense, information-rich web UI for the [Transmission](https://transmissionbt.c
 - **Labels**: assign and remove labels per torrent via context menu; filter by label or "No label" in the sidebar; define a preset list of labels in Preferences
 - Double-click a torrent row to open its Properties dialog
 - **Properties dialog**: per-torrent speed limits, peer limit, seeding ratio and idle limits, editable tracker list
-- Keyboard navigation: Up/Down arrow keys move selection through the current view
-- Add torrent by URL or magnet link
-- Full Preferences dialog: speeds, port, queues, seeding ratio, label presets; warns before closing with unsaved changes
+- Keyboard shortcuts: Up/Down navigate selection, `Insert` adds a torrent, `Delete`/`Shift+Delete` remove (with/without data), `F2` renames, `Alt+Enter` opens Properties — shown as hints in the context menu
+- Add torrent by URL or magnet file, with a folder field that can be typed freely or picked from known/preset folders via a dropdown
+- Real verification progress while checking — both the row progress bar and per-file bars in the Files tab track Transmission's actual recheck progress
+- Full Preferences dialog: speeds, port, queues, seeding ratio, label presets, folder presets; warns before closing with unsaved changes
 - Connection settings (RPC URL, username, password) stored server-side in `config.json`
-- Auth error banner: when Transmission RPC requires Basic Auth, polling stops and a banner prompts to open Settings
+- Auth error banner: when Transmission RPC requires Basic Auth, a banner prompts to open Settings while polling keeps retrying in the background so it reconnects automatically once the RPC endpoint is reachable again
 - Dynamic page title showing current download/upload speed when active
 - Light / dark theme via `prefers-color-scheme`
 - IBM Plex Sans UI + IBM Plex Mono for all numeric values
@@ -211,4 +212,5 @@ Persisted in `localStorage` per browser. Keys:
 - `transmission-details-h` — detail panel height
 - `transmission-details-tab` — last active detail tab
 - `transmission-label-presets` — user-defined label preset list (set in Preferences)
+- `transmission-dir-presets` — user-defined download folder preset list (set in Preferences)
 - `transmission-files-cols`, `transmission-peers-cols`, `transmission-trackers-cols` — detail panel sub-tables

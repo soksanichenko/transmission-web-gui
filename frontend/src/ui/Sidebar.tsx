@@ -31,6 +31,7 @@ const STATUSES: { id: TorrentStatus; label: string; dot: string }[] = [
   { id: 'seeding',     label: 'Seeding',     dot: 'var(--status-seed)' },
   { id: 'paused',      label: 'Paused',      dot: 'var(--status-paused)' },
   { id: 'checking',    label: 'Checking',    dot: 'var(--status-check)' },
+  { id: 'queued',      label: 'Queued',      dot: 'var(--status-queued)' },
   { id: 'error',       label: 'Error',       dot: 'var(--status-error)' },
 ]
 
