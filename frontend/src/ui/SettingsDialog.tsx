@@ -3,9 +3,11 @@ import { Dialog } from '../components/feedback/Dialog'
 import { Button } from '../components/controls/Button'
 import { Input } from '../components/controls/Input'
 import { Checkbox } from '../components/controls/Checkbox'
+import { Select } from '../components/controls/Select'
 import { Icon } from '../components/controls/Icon'
 import type { SessionInfo } from '../api/types'
 import { getConnectionConfig, getServerConfig, saveServerConfig, setConnectionConfig } from '../api/config'
+import { DATE_FORMAT_OPTIONS, getDateFormat, setDateFormat, type DateFormat } from '../utils/format'
 
 interface SettingsDialogProps {
   session: SessionInfo | null
@@ -52,6 +54,8 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
 
   const removeDirPreset = (dir: string) => setDirPresets(p => p.filter(d => d !== dir))
 
+  const [dateFormat, setDateFormatState] = useState<DateFormat>(getDateFormat)
+
   const initS = {
     dlLimited: session?.['speed-limit-down-enabled'] ?? true,
     dlLimit: String(session?.['speed-limit-down'] ?? 2000),
@@ -74,12 +78,14 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
   const initSRef     = useRef(initS)
   const initPresetsRef = useRef(initialPresets())
   const initDirPresetsRef = useRef(initialDirPresets())
+  const initDateFormatRef = useRef(dateFormat)
 
   const isDirty =
     JSON.stringify(conn)         !== JSON.stringify(initConnRef.current) ||
     JSON.stringify(s)            !== JSON.stringify(initSRef.current)    ||
     JSON.stringify(labelPresets) !== JSON.stringify(initPresetsRef.current) ||
-    JSON.stringify(dirPresets)   !== JSON.stringify(initDirPresetsRef.current)
+    JSON.stringify(dirPresets)   !== JSON.stringify(initDirPresetsRef.current) ||
+    dateFormat                   !== initDateFormatRef.current
 
   const handleClose = () => {
     if (isDirty) { setShowDiscardConfirm(true) } else { onClose() }
@@ -90,6 +96,7 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
     setSaveErr(null)
     localStorage.setItem('transmission-label-presets', JSON.stringify(labelPresets))
     localStorage.setItem('transmission-dir-presets', JSON.stringify(dirPresets))
+    setDateFormat(dateFormat)
     setConnectionConfig(conn)
     saveServerConfig(conn)
       .catch(err => setSaveErr(String(err)))
@@ -152,6 +159,17 @@ export function SettingsDialog({ session, onClose, onSave }: SettingsDialogProps
             <MiniNum label="Username" value={conn.username} onValue={v => setConnField('username', v)} />
             <MiniNum label="Password" value={conn.password} onValue={v => setConnField('password', v)} password />
           </div>
+        </Group>
+
+        <Group label="Display">
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)' }}>Date format</span>
+            <Select
+              options={DATE_FORMAT_OPTIONS}
+              value={dateFormat}
+              onChange={e => setDateFormatState(e.target.value as DateFormat)}
+            />
+          </label>
         </Group>
 
         <Group label="Speed">

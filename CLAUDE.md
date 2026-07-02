@@ -73,6 +73,9 @@ Transmission RPC v3.0+ exposes `labels: string[]` on each torrent. They are fetc
 ### Folder presets
 `localStorage['transmission-dir-presets']` stores a user-defined list of download folder paths, managed in `SettingsDialog` (Folders group) with the same add/remove pattern as label presets. `MainWindow.tsx`'s `dirs` list (passed to `AddDialog`) merges these presets with every `downloadDir` currently in use by live torrents. `AddDialog`'s folder field is a free-text `Input` (with a `<datalist>` for browser autocomplete) plus a chevron button that opens a `ContextMenu` populated from `dirs` — clicking an entry fills the input, but any path can still be typed manually.
 
+### Date display format
+`frontend/src/utils/format.ts` reads the date format from `localStorage['transmission-date-format']` on every call to `date()` (per-call, not cached — same convention as connection config). `getDateFormat()`/`setDateFormat()` and the `DATE_FORMAT_OPTIONS` list (used to populate the `Select` in `SettingsDialog`'s Display group) live alongside `date()`. Supported values: `'locale'` (default, e.g. "Jul 2, 2026"), `'iso'` ("2026-07-02"), `'eu'` ("02.07.2026"), `'us'` ("07/02/2026") — all followed by a locale-formatted `HH:mm` time.
+
 ### Checking / recheck progress
 Transmission reports verification progress via `recheckProgress` (0–1), separate from `percentDone` which stays at its pre-check value until verification finishes. `TORRENT_FIELDS` fetches `recheckProgress`; `TorrentTable`'s Progress column renders `recheckProgress` instead of `percentDone` whenever `status === 'checking'`. Because polling only refetches `TorrentDetails` (used by the Files tab's per-file bars) on selection change or `refreshDetails()`, `MainWindow` also bumps `detailsKey` on every poll tick while the selected torrent's status is `'checking'`, so per-file progress stays live too.
 
@@ -83,7 +86,7 @@ Transmission reports verification progress via `recheckProgress` (0–1), separa
 Right-clicking any sidebar filter item calls `onSidebarContext(filterKey, x, y)` in `MainWindow`, which opens a `ContextMenu` with bulk actions (Start All, Stop All, Re-announce, Recheck, Labels submenu, Remove All, Remove With Data) scoped to torrents matching that filter key. `getSidebarTorrentIds(filterKey)` mirrors the same filter logic used for the torrent list view.
 
 ### Settings unsaved-changes warning
-`SettingsDialog` captures baseline `conn`, `s`, and `labelPresets` in `useRef` at mount time. `isDirty` compares current state to baseline via `JSON.stringify`. Closing via Cancel/Escape/X when dirty shows a confirmation `Dialog` with Keep Editing / Discard / Save & Close options.
+`SettingsDialog` captures baseline `conn`, `s`, `labelPresets`, `dirPresets`, and `dateFormat` in `useRef` at mount time. `isDirty` compares current state to baseline via `JSON.stringify` (`dateFormat` by direct `!==` since it's a primitive). Closing via Cancel/Escape/X when dirty shows a confirmation `Dialog` with Keep Editing / Discard / Save & Close options.
 
 ### Keyboard shortcuts
 Global `keydown` listener in `MainWindow` (ignored while focus is on an `input`/`textarea`/`select` or inside an open dialog): Up/Down navigate the current view's selection, `Insert` opens Add Torrent, `Delete`/`Shift+Delete` open the Remove / Remove With Data confirm dialogs for the current selection, `F2` opens Rename, and `Alt+Enter` opens Properties (the latter two require exactly one selected torrent). The per-torrent `ContextMenu` shows these as `shortcut` hints on the matching `MenuItem`s (`ContextMenu`/`MenuItemButton` already render `item.shortcut` if present).

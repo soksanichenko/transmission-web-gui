@@ -23,13 +23,40 @@ export function eta(sec: number | null | undefined): string {
   return `${s}s`
 }
 
+export type DateFormat = 'locale' | 'iso' | 'eu' | 'us'
+
+export const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
+  { value: 'locale', label: 'Locale (Jul 2, 2026)' },
+  { value: 'iso', label: 'ISO (2026-07-02)' },
+  { value: 'eu', label: 'European (02.07.2026)' },
+  { value: 'us', label: 'US (07/02/2026)' },
+]
+
+const DATE_FORMAT_KEY = 'transmission-date-format'
+
+export function getDateFormat(): DateFormat {
+  const v = localStorage.getItem(DATE_FORMAT_KEY)
+  return v === 'iso' || v === 'eu' || v === 'us' ? v : 'locale'
+}
+
+export function setDateFormat(fmt: DateFormat): void {
+  localStorage.setItem(DATE_FORMAT_KEY, fmt)
+}
+
 export function date(ts: number): string {
   const d = new Date(ts * 1000)
-  return (
-    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
-    ' ' +
-    d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  )
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  switch (getDateFormat()) {
+    case 'iso':
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`
+    case 'eu':
+      return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${time}`
+    case 'us':
+      return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()} ${time}`
+    default:
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ' ' + time
+  }
 }
 
 /** Human-readable duration, e.g. "92d 13h" or "5h 20m". */
