@@ -81,6 +81,8 @@
         type: bind
     env:
       CONFIG_PATH: /data/config.json
+    labels:
+      monitoring.critical: "true"
     log_driver: journald
   become: yes
 
