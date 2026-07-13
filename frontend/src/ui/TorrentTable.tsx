@@ -50,8 +50,13 @@ function cell(t: Torrent, key: string): React.ReactNode {
   switch (key) {
     case 'name':
       return <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-    case 'percentDone':
-      return <ProgressBar value={t.status === 'checking' ? t.recheckProgress : t.percentDone} status={t.status} showLabel striped={t.status === 'checking'} />
+    case 'percentDone': {
+      const gettingMetadata = t.metadataPercentComplete < 1
+      const value = t.status === 'checking'
+        ? t.recheckProgress
+        : gettingMetadata ? t.metadataPercentComplete : t.percentDone
+      return <ProgressBar value={value} status={t.status} showLabel striped={t.status === 'checking' || gettingMetadata} />
+    }
     case 'totalSize':       return num(F.size(t.totalSize))
     case 'downloadedEver':  return num(F.size(t.downloadedEver))
     case 'uploadedEver':    return num(F.size(t.uploadedEver))
@@ -63,7 +68,7 @@ function cell(t: Torrent, key: string): React.ReactNode {
     case 'uploadRatio':     return num(t.uploadRatio.toFixed(2))
     case 'addedDate':       return num(F.date(t.addedDate))
     case 'doneDate':        return num(t.doneDate > 0 ? F.date(t.doneDate) : '—')
-    case 'status':          return <StatusBadge status={t.status} />
+    case 'status':          return <StatusBadge status={t.status} label={t.metadataPercentComplete < 1 ? 'Getting metadata' : undefined} />
     default:                return null
   }
 }

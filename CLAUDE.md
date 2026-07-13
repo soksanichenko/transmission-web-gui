@@ -79,6 +79,9 @@ Transmission RPC v3.0+ exposes `labels: string[]` on each torrent. They are fetc
 ### Checking / recheck progress
 Transmission reports verification progress via `recheckProgress` (0–1), separate from `percentDone` which stays at its pre-check value until verification finishes. `TORRENT_FIELDS` fetches `recheckProgress`; `TorrentTable`'s Progress column renders `recheckProgress` instead of `percentDone` whenever `status === 'checking'`. Because polling only refetches `TorrentDetails` (used by the Files tab's per-file bars) on selection change or `refreshDetails()`, `MainWindow` also bumps `detailsKey` on every poll tick while the selected torrent's status is `'checking'`, so per-file progress stays live too.
 
+### Magnet metadata progress
+Transmission reports `metadataPercentComplete` (0–1) for torrents added via magnet link that haven't yet fetched the .torrent metadata from peers — during this phase `percentDone` stays at 0 since `totalSize` is unknown. `TorrentTable`'s Progress column renders `metadataPercentComplete` (striped, like the checking state) instead of `percentDone` whenever it is below 1, and the Status column shows "Getting metadata" in place of the normal status label.
+
 ### Auth error handling
 `rpc.ts` exports `AuthRequiredError`. All fetches use `credentials: 'omit'` to suppress the browser's native Basic Auth dialog. A 401 response throws `AuthRequiredError`. `MainWindow` catches it in `refresh()` and sets `authRequired` state, but keeps polling every 3 s like any other failed tick — this lets the app self-heal automatically once the RPC endpoint is reachable again (e.g. after a redeploy), without requiring the user to open Settings. A banner renders with an "Open Settings" button while `authRequired` is true.
 

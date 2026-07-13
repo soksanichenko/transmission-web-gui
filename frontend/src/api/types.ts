@@ -27,6 +27,7 @@ export interface Torrent {
   name: string
   percentDone: number
   recheckProgress: number
+  metadataPercentComplete: number
   totalSize: number
   downloadedEver: number
   uploadedEver: number
@@ -137,6 +138,7 @@ export const TORRENT_FIELDS = [
   'name',
   'percentDone',
   'recheckProgress',
+  'metadataPercentComplete',
   'totalSize',
   'downloadedEver',
   'uploadedEver',
