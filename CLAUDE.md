@@ -107,7 +107,7 @@ Global `keydown` listener in `MainWindow` (ignored while focus is on an `input`/
 | `frontend/src/main.tsx` | Entry point — awaits `loadServerConfig()` before mounting React |
 | `frontend/src/api/config.ts` | Connection config: server fetch, localStorage, defaults |
 | `frontend/src/api/rpc.ts` | All Transmission JSON-RPC calls |
-| `frontend/src/api/types.ts` | `Torrent`, `TorrentDetails`, `SessionInfo`, `TorrentTracker` — add new fields here + to `TORRENT_FIELDS` / `DETAILS_FIELDS` |
+| `frontend/src/api/types.ts` | `Torrent`, `TorrentDetails`, `SessionInfo`, `SessionStats`, `TorrentTracker` — add new fields here + to `TORRENT_FIELDS` / `DETAILS_FIELDS` |
 | `frontend/src/ui/MainWindow.tsx` | Root component: polling, selection, sort, filter, all dialogs |
 | `frontend/src/ui/TorrentTable.tsx` | 13-column grid; column defs (`COLS`) control label, width, sort key, render; double-click row → Properties |
 | `frontend/src/ui/Sidebar.tsx` | Resizable sidebar with collapsible Status / Folders / Trackers / Labels sections; right-click items fire `onSidebarContext`; section collapse persisted in `localStorage['transmission-sidebar-sections']` |

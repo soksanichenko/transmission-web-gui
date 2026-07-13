@@ -28,6 +28,7 @@ A dense, information-rich web UI for the [Transmission](https://transmissionbt.c
 - Full Preferences dialog: speeds, port, queues, seeding ratio, label presets, folder presets, date display format; warns before closing with unsaved changes
 - Connection settings (RPC URL, username, password) stored server-side in `config.json`
 - Auth error banner: when Transmission RPC requires Basic Auth, a banner prompts to open Settings while polling keeps retrying in the background so it reconnects automatically once the RPC endpoint is reachable again
+- Statistics dialog showing cumulative downloaded/uploaded totals, ratio, running time, session count, and torrents added (via Transmission's `session-stats` RPC)
 - Dynamic page title showing current download/upload speed when active
 - Light / dark theme via `prefers-color-scheme`
 - IBM Plex Sans UI + IBM Plex Mono for all numeric values
@@ -157,6 +158,7 @@ Auth is handled by the existing `homeserver-access.htpasswd` managed in the `inf
 │   │   │   ├── StatusBar.tsx             # Session-level stats + free disk space
 │   │   │   ├── AddDialog.tsx             # Add torrent by URL/magnet
 │   │   │   ├── SettingsDialog.tsx        # Preferences + connection settings
+│   │   │   ├── StatisticsDialog.tsx      # Cumulative downloaded/uploaded/ratio via session-stats
 │   │   │   └── GraphTab.tsx              # Speed graph (canvas)
 │   │   ├── utils/
 │   │   │   ├── format.ts          # size(), rate(), eta(), date(), duration() formatters

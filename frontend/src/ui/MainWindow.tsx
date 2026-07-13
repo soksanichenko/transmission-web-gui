@@ -7,6 +7,7 @@ import { DetailsPanel } from './DetailsPanel'
 import { StatusBar } from './StatusBar'
 import { AddDialog } from './AddDialog'
 import { SettingsDialog } from './SettingsDialog'
+import { StatisticsDialog } from './StatisticsDialog'
 import { TorrentPropertiesDialog } from './TorrentPropertiesDialog'
 import { Dialog } from '../components/feedback/Dialog'
 import { Button } from '../components/controls/Button'
@@ -21,6 +22,7 @@ type DialogState =
   | null
   | 'add'
   | 'settings'
+  | 'statistics'
   | { kind: 'confirm-remove'; ids: number[] }
   | { kind: 'confirm-data'; ids: number[] }
   | { kind: 'location'; id: number; current: string }
@@ -411,6 +413,7 @@ export function MainWindow() {
         selCount={selected.length}
         onAdd={() => setDialog('add')}
         onSettings={() => setDialog('settings')}
+        onStatistics={() => setDialog('statistics')}
         onAction={handleAction}
         search={search}
         onSearch={setSearch}
@@ -489,6 +492,10 @@ export function MainWindow() {
           // If polling was paused due to auth error, try again after settings change.
           if (authRequired) immediateRefresh()
         }} onSave={handleSaveSession} />
+      )}
+
+      {dialog === 'statistics' && (
+        <StatisticsDialog onClose={() => setDialog(null)} />
       )}
 
       {dialog && typeof dialog === 'object' && dialog.kind === 'confirm-remove' && (

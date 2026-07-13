@@ -6,6 +6,7 @@ interface ToolbarProps {
   selCount: number
   onAdd: () => void
   onSettings: () => void
+  onStatistics: () => void
   onAction: (action: 'start' | 'pause' | 'delete') => void
   search: string
   onSearch: (v: string) => void
@@ -13,7 +14,7 @@ interface ToolbarProps {
   onToggleAlt: () => void
 }
 
-export function Toolbar({ selCount, onAdd, onSettings, onAction, search, onSearch, altSpeed, onToggleAlt }: ToolbarProps) {
+export function Toolbar({ selCount, onAdd, onSettings, onStatistics, onAction, search, onSearch, altSpeed, onToggleAlt }: ToolbarProps) {
   const has = selCount > 0
   return (
     <div
@@ -50,6 +51,7 @@ export function Toolbar({ selCount, onAdd, onSettings, onAction, search, onSearc
         size="sm"
         containerStyle={{ width: 168 }}
       />
+      <IconButton icon="activity" title="Statistics" onClick={onStatistics} />
       <IconButton icon="settings" title="Preferences" onClick={onSettings} />
     </div>
   )

@@ -6,6 +6,7 @@ import {
   type TorrentDetails,
   type TorrentTracker,
   type SessionInfo,
+  type SessionStats,
 } from './types'
 import { getConnectionConfig } from './config'
 
@@ -233,6 +234,10 @@ export async function addMagnet(
 
 export async function getSession(): Promise<SessionInfo> {
   return call<SessionInfo>('session-get')
+}
+
+export async function getSessionStats(): Promise<SessionStats> {
+  return call<SessionStats>('session-stats')
 }
 
 export async function setSession(args: Partial<SessionInfo>): Promise<void> {

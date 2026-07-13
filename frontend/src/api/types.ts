@@ -119,6 +119,19 @@ export interface SessionInfo {
   'seed-queue-size': number
 }
 
+export interface SessionStatsEntry {
+  uploadedBytes: number
+  downloadedBytes: number
+  filesAdded: number
+  sessionCount: number
+  secondsActive: number
+}
+
+export interface SessionStats {
+  'current-stats': SessionStatsEntry
+  'cumulative-stats': SessionStatsEntry
+}
+
 export const TORRENT_FIELDS = [
   'id',
   'name',
