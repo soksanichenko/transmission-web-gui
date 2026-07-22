@@ -12,6 +12,7 @@ updates:
           - "*"
         update-types:
           - "minor"
+          - "major"
           - "patch"
 
   - package-ecosystem: "npm"
@@ -25,6 +26,7 @@ updates:
           - "*"
         update-types:
           - "minor"
+          - "major"
           - "patch"
 
   - package-ecosystem: "github-actions"
@@ -38,4 +40,5 @@ updates:
           - "*"
         update-types:
           - "minor"
+          - "major"
           - "patch"
