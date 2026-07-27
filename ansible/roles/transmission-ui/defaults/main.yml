@@ -17,6 +17,6 @@ nginx_volumes_path: "{{ docker_volumes_directory }}/nginx"
 nginx_confd_path: "{{ nginx_volumes_path }}/conf.d"
 nginx_html_path: "{{ nginx_volumes_path }}/html"
 nginx_custom_upstream_path: "{{ nginx_confd_path }}/custom-upstream"
-nginx_domain_custom_locations_path: "{{ nginx_confd_path }}/homeserver.zelgray.work-custom-locations"
+nginx_domain_custom_locations_path: "{{ nginx_confd_path }}/portal.zelgray.cherkasy.ua-custom-locations"
 nginx_htpasswd_path: "{{ nginx_confd_path }}/htpasswd"
 ...

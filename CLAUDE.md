@@ -2,7 +2,7 @@
 
 ## What this project is
 
-A custom web UI for the Transmission BitTorrent daemon. Dense, information-rich interface in the spirit of µTorrent 2.x. React 18 + TypeScript + Vite frontend, FastAPI config backend, deployed via Ansible to `homeserver.zelgray.work`.
+A custom web UI for the Transmission BitTorrent daemon. Dense, information-rich interface in the spirit of µTorrent 2.x. React 18 + TypeScript + Vite frontend, FastAPI config backend, deployed via Ansible to home-server (`zelgray.cherkasy.ua`), served at `https://portal.zelgray.cherkasy.ua/transmission-ui/`.
 
 ## How to run
 
