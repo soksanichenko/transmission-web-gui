@@ -182,7 +182,6 @@ Auth is handled by the existing `homeserver-access.htpasswd` managed in the `inf
 │   └── Dockerfile
 ├── ansible/
 │   ├── ansible.cfg
-│   ├── requirements.yml
 │   ├── inventories/home-server/
 │   └── roles/transmission-ui/
 ├── docker/
@@ -192,6 +191,7 @@ Auth is handled by the existing `homeserver-access.htpasswd` managed in the `inf
 │   └── dependabot.yml         # pip, npm (frontend/), github-actions
 ├── .pre-commit-config.yaml    # ruff + ruff-format hooks, scoped to backend/
 ├── pyproject.toml             # ruff config (quote-style = single)
+├── requirements.yml           # Ansible Galaxy collections — kept at repo root so Semaphore's auto-install finds it
 ├── install_dependencies.sh
 └── docker-compose.yml         # For local standalone testing
 ```
