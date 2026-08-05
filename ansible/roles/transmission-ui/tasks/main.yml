@@ -1,4 +1,12 @@
 ---
+- name: Install Vite frontend dependencies locally
+  ansible.builtin.command:
+    cmd: npm ci
+    chdir: "{{ playbook_dir }}/../../frontend"
+  delegate_to: localhost
+  become: no
+  changed_when: true
+
 - name: Build Vite frontend locally
   ansible.builtin.command:
     cmd: npm run build
