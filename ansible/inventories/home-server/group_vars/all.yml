@@ -8,4 +8,5 @@ docker_volumes_directory: '/opt/docker'
 transmission_ui_rpc_url: 'https://{{ ansible_host }}/transmission/rpc'
 transmission_ui_rpc_username: "{{ infisical_secrets.secrets['transmission-rpc-username'] }}"
 transmission_ui_rpc_password: "{{ infisical_secrets.secrets['transmission-rpc-password'] }}"
+transmission_ui_config_encryption_key: "{{ infisical_secrets.secrets['transmission-ui-config-encryption-key'] }}"
 ...

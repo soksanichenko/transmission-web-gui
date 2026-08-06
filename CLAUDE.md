@@ -153,6 +153,8 @@ The playbook builds the frontend locally, rsyncs `dist/` to the nginx html direc
 
 The initial `config.json` is templated from Infisical secrets (`transmission-rpc-username`, `transmission-rpc-password`) with `force: no` — it is not overwritten on subsequent deploys.
 
+The config-api container's `CONFIG_ENCRYPTION_KEY` env var (Infisical secret `transmission-ui-config-encryption-key`, a Fernet key) encrypts the `password` field of `config.json` at rest — see `backend/main.py`. It lives outside the `/data` bind mount, so it isn't exposed by the same filesystem access as `config.json` itself.
+
 ## What NOT to do
 
 - Do not add `console.log` — silence errors silently or let them surface to the user via the UI
