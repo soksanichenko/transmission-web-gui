@@ -1,6 +1,6 @@
 # transmission-web-gui
 
-A dense, information-rich web UI for the [Transmission](https://transmissionbt.com/) BitTorrent daemon, inspired by µTorrent 2.x. Built with React 18 + TypeScript + Vite, deployed via Ansible onto a home server behind nginx.
+A dense, information-rich web UI for the [Transmission](https://transmissionbt.com/) BitTorrent daemon, inspired by µTorrent 2.x. Built with React 19 + TypeScript + Vite, deployed via Ansible onto a home server behind nginx.
 
 ![Torrent list with sidebar and Trackers detail tab](transmission-web-gui-01.png)
 
@@ -40,7 +40,7 @@ A dense, information-rich web UI for the [Transmission](https://transmissionbt.c
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, TypeScript, Vite 6 |
+| Frontend | React 19, TypeScript, Vite 8 |
 | Styling | Inline styles + CSS custom properties (no UI library) |
 | Icons | Lucide SVG paths, embedded inline (no CDN) |
 | Backend | FastAPI + uvicorn (Python 3.12) |
@@ -106,7 +106,7 @@ Output goes to `frontend/dist/`. The base path is `/transmission-ui/`.
 
 ## Deployment
 
-Secrets (`transmission-rpc-username`, `transmission-rpc-password`) are read from Infisical project `286db07f-4dba-4ca9-a515-f017d77b8bf1`, path `/hosts/home-server`.
+Secrets (`transmission-rpc-username`, `transmission-rpc-password`) are read from Infisical project `286db07f-4dba-4ca9-a515-f017d77b8bf1`, path `/hosts/zelgray-cherkasy`.
 
 ```bash
 export INFISICAL_API_URL=...
@@ -188,6 +188,7 @@ Auth is handled by the existing `homeserver-access.htpasswd` managed in the `inf
 │   └── nginx.conf             # Local dev only (used by docker-compose.yml)
 ├── .github/
 │   ├── workflows/lint.yml     # ruff check + format check on backend/
+│   ├── workflows/codeql.yml   # CodeQL scan: actions, python, javascript-typescript
 │   └── dependabot.yml         # pip, npm (frontend/), github-actions
 ├── .pre-commit-config.yaml    # ruff + ruff-format hooks, scoped to backend/
 ├── pyproject.toml             # ruff config (quote-style = single)
