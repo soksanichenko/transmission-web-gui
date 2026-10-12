@@ -3,7 +3,8 @@ transmission_ui_app_dir: "{{ docker_volumes_directory }}/transmission-ui"
 
 transmission_ui_config_api_name: 'transmission-ui-config-api'
 transmission_ui_config_api_image: 'transmission-ui-config-api'
-transmission_ui_config_api_port: 8095
+# Must match the uvicorn port in backend/Dockerfile
+transmission_ui_config_api_port: 8081
 
 # Connection settings written to the initial config.json (not overwritten after first deploy)
 transmission_ui_rpc_url: '/transmission/rpc'
