@@ -4,7 +4,13 @@ location /transmission-ui/api/ {
     allow {{ network }};
 {% endfor %}
     deny all;
-    proxy_pass            http://transmission_ui_config_api/;
+    # Resolved through Docker's DNS per request, so a stopped/recreated
+    # container can't stop nginx itself from starting. A variable proxy_pass
+    # can't strip the location prefix, hence the rewrite.
+    resolver              127.0.0.11 valid=10s ipv6=off;
+    set                   $transmission_ui_config_api_host "{{ transmission_ui_config_api_name }}";
+    rewrite               ^/transmission-ui/api/(.*)$ /$1 break;
+    proxy_pass            http://$transmission_ui_config_api_host:{{ transmission_ui_config_api_port }};
     proxy_set_header      Host              $host;
     proxy_set_header      X-Real-IP         $client_real_ip;
     proxy_set_header      X-Forwarded-For   $proxy_add_x_forwarded_for;

@@ -123,7 +123,7 @@ The playbook:
 3. Rsyncs `backend/` → `/opt/docker/transmission-ui/backend/`
 4. Templates `config.json` with RPC credentials (only on first deploy — not overwritten afterwards)
 5. Builds and deploys the `transmission-ui-config-api` Docker container
-6. Drops nginx upstream and location configs, reloads nginx
+6. Drops the nginx location config (proxying to the config API by name through Docker's resolver, so nginx still starts while that container is down; removes the former static upstream file), reloads nginx
 
 ### Resulting nginx routes
 
