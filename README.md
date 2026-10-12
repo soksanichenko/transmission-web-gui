@@ -133,7 +133,7 @@ The playbook:
 | `/transmission-ui/api/` | `transmission-ui-config-api` container (FastAPI) |
 | `/transmission/rpc` | Transmission daemon (managed by the `infra` repo) |
 
-Auth is handled by the existing `homeserver-access.htpasswd` managed in the `infra` repo.
+Access is restricted to the LAN (`transmission_ui_local_networks`, `allow`/`deny` in nginx): the config API returns the Transmission RPC password in plain text.
 
 ## Project structure
 

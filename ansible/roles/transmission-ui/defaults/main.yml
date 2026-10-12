@@ -14,6 +14,12 @@ transmission_ui_rpc_password: ''
 # auto-generated key file next to config.json (see backend/main.py)
 transmission_ui_config_encryption_key: ''
 
+# The config API returns the Transmission RPC password in plain text, so both
+# locations are reachable from these networks only (the domain is behind
+# Cloudflare, so outside requests arrive from an edge IP and are denied)
+transmission_ui_local_networks:
+  - "{{ ansible_default_ipv4.network }}/{{ ansible_default_ipv4.prefix }}"
+
 # Nginx — defaults match infra's nginx role
 nginx_docker_container_name: 'nginx-server'
 nginx_confd_container_path: '/etc/nginx/conf.d'
@@ -22,5 +28,4 @@ nginx_confd_path: "{{ nginx_volumes_path }}/conf.d"
 nginx_html_path: "{{ nginx_volumes_path }}/html"
 nginx_custom_upstream_path: "{{ nginx_confd_path }}/custom-upstream"
 nginx_domain_custom_locations_path: "{{ nginx_confd_path }}/portal.zelgray.cherkasy.ua-custom-locations"
-nginx_htpasswd_path: "{{ nginx_confd_path }}/htpasswd"
 ...

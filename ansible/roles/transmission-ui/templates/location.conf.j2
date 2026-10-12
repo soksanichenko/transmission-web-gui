@@ -1,7 +1,9 @@
 # Proxied before the static location to take precedence
 location /transmission-ui/api/ {
-    auth_basic "homeserver";
-    auth_basic_user_file {{ nginx_confd_container_path }}/htpasswd/homeserver-access.htpasswd;
+{% for network in transmission_ui_local_networks %}
+    allow {{ network }};
+{% endfor %}
+    deny all;
     proxy_pass            http://transmission_ui_config_api/;
     proxy_set_header      Host              $host;
     proxy_set_header      X-Real-IP         $client_real_ip;
@@ -12,8 +14,10 @@ location /transmission-ui/api/ {
 }
 
 location /transmission-ui/ {
-    auth_basic "homeserver";
-    auth_basic_user_file {{ nginx_confd_container_path }}/htpasswd/homeserver-access.htpasswd;
+{% for network in transmission_ui_local_networks %}
+    allow {{ network }};
+{% endfor %}
+    deny all;
     alias      /usr/share/nginx/html/static/transmission-ui/;
     index      index.html;
     try_files  $uri $uri/ =404;
