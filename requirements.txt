@@ -1,4 +1,4 @@
 -r backend/requirements.txt
 ansible==14.5.0
 infisicalsdk==1.0.17
-pre-commit==4.6.2
+pre-commit==4.7.0
