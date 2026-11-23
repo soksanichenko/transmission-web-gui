@@ -1,15 +1,17 @@
-import React, { useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { Dialog } from '../components/feedback/Dialog'
 import { Button } from '../components/controls/Button'
 import { Input } from '../components/controls/Input'
 import { Checkbox } from '../components/controls/Checkbox'
 import { Icon } from '../components/controls/Icon'
 import { ContextMenu } from '../components/feedback/ContextMenu'
+import { parseTorrentFiles, type TorrentFileEntry } from '../utils/torrentFiles'
+import * as F from '../utils/format'
 
 interface AddDialogProps {
   dirs: string[]
   onClose: () => void
-  onAdd: (params: { magnetOrFile: string; isFile: boolean; dir: string; paused: boolean }) => void
+  onAdd: (params: { magnetOrFile: string; isFile: boolean; dir: string; paused: boolean; unwantedFiles?: number[] }) => void
 }
 
 export function AddDialog({ dirs, onClose, onAdd }: AddDialogProps) {
@@ -20,11 +22,23 @@ export function AddDialog({ dirs, onClose, onAdd }: AddDialogProps) {
   const [fileData, setFileData] = useState<string | null>(null)
   const [drag, setDrag] = useState(false)
   const [dirMenuPos, setDirMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [files, setFiles] = useState<TorrentFileEntry[]>([])
+  const [unticked, setUnticked] = useState<Set<number>>(new Set())
   const fileRef = useRef<HTMLInputElement>(null)
+  const latestFile = useRef<File | null>(null)
 
   const readFile = (f: File) => {
+    latestFile.current = f
+    setFileData(null)
+    setFileName(null)
+    setFiles([])
+    setUnticked(new Set())
+    f.arrayBuffer().then(buf => {
+      if (latestFile.current === f) setFiles(parseTorrentFiles(new Uint8Array(buf)) ?? [])
+    }).catch(() => {})
     const reader = new FileReader()
     reader.onload = e => {
+      if (latestFile.current !== f) return
       const b64 = (e.target?.result as string).split(',')[1] ?? ''
       setFileData(b64)
       setFileName(f.name)
@@ -44,11 +58,23 @@ export function AddDialog({ dirs, onClose, onAdd }: AddDialogProps) {
     if (f) readFile(f)
   }
 
-  const canAdd = !!magnet || !!fileData
+  const showFiles = !!fileData && files.length > 1
+  const selectedCount = files.length - unticked.size
+  const selectedSize = files.reduce((n, f, i) => (unticked.has(i) ? n : n + f.length), 0)
+  const canAdd = (!!magnet || !!fileData) && !(showFiles && selectedCount === 0)
+
+  const toggleFile = useCallback((i: number) => setUnticked(prev => {
+    const next = new Set(prev)
+    next.has(i) ? next.delete(i) : next.add(i)
+    return next
+  }), [])
 
   const handleAdd = () => {
     if (fileData) {
-      onAdd({ magnetOrFile: fileData, isFile: true, dir, paused })
+      onAdd({
+        magnetOrFile: fileData, isFile: true, dir, paused,
+        unwantedFiles: showFiles && unticked.size ? [...unticked].sort((a, b) => a - b) : undefined,
+      })
     } else if (magnet) {
       onAdd({ magnetOrFile: magnet, isFile: false, dir, paused })
     }
@@ -93,6 +119,23 @@ export function AddDialog({ dirs, onClose, onAdd }: AddDialogProps) {
             : <span style={{ fontSize: 'var(--fs-sm)' }}>Drop a <b>.torrent</b> file here, or click to choose</span>}
         </div>
         <input ref={fileRef} type="file" accept=".torrent" style={{ display: 'none' }} onChange={handleFileInput} />
+
+        {showFiles && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ flex: 1, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                {selectedCount} of {files.length} selected · {F.size(selectedSize)}
+              </span>
+              <Button size="sm" onClick={() => setUnticked(new Set())}>Select all</Button>
+              <Button size="sm" onClick={() => setUnticked(new Set(files.keys()))}>None</Button>
+            </div>
+            <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r-2)', background: 'var(--surface)' }}>
+              {files.map((f, i) => (
+                <FileRow key={i} index={i} path={f.path} length={f.length} checked={!unticked.has(i)} onToggle={toggleFile} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <Field label="Magnet link">
           <Input placeholder="magnet:?xt=urn:btih:…" value={magnet} onChange={e => setMagnet(e.target.value)} containerStyle={{ width: '100%' }} />
@@ -139,6 +182,30 @@ export function AddDialog({ dirs, onClose, onAdd }: AddDialogProps) {
     </Dialog>
   )
 }
+
+// Memoized: with thousands of files every toggle would otherwise re-render every row (~0.4 s at 5000).
+const FileRow = React.memo(function FileRow({ index, path, length, checked, onToggle }: {
+  index: number
+  path: string
+  length: number
+  checked: boolean
+  onToggle: (index: number) => void
+}) {
+  return (
+    <div
+      title={path}
+      style={{ display: 'flex', alignItems: 'center', gap: 8, height: 24, padding: '0 8px', borderBottom: '1px solid var(--border-faint)' }}
+    >
+      <Checkbox
+        label={path}
+        checked={checked}
+        onChange={() => onToggle(index)}
+        style={{ flex: 1, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}
+      />
+      <span style={{ flex: 'none', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{F.size(length)}</span>
+    </div>
+  )
+})
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

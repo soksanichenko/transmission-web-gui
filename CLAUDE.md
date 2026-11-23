@@ -97,6 +97,12 @@ Global `keydown` listener in `MainWindow` (ignored while focus is on an `input`/
 ### Context menu submenu pattern
 `ContextMenu` supports `submenu?: MenuItem[]` on any item. Clicking a submenu parent toggles inline expansion (accordion); submenu items render indented below the parent. Do not add hover-triggered flyout submenus.
 
+### Context menu stays inside the viewport
+`ContextMenu` measures itself in a `useLayoutEffect` and shifts back by `{dx, dy}` if it would overflow any viewport edge (4px margin). It re-clamps when an inline submenu expands and on window `resize`, and has `maxHeight` + `overflowY: 'auto'` so a menu taller than the window scrolls. Every menu in the app goes through this component, so new menus get this for free — don't position menus manually or add per-call-site clamping. Callers that pass a `transform` via `style` (e.g. `AddDialog`'s folder menu) still work: the measurement uses `getBoundingClientRect`, which includes the transform.
+
+### Add dialog: choosing files of a .torrent
+When a `.torrent` file is chosen, `AddDialog` parses it in the browser with `parseTorrentFiles()` (`src/utils/torrentFiles.ts`, a small bencode reader, no dependency). For 2+ files it shows a checkbox list; unticked indices are sent as `files-unwanted` in `torrent-add` (`rpc.addTorrentFile(..., unwantedFiles)`), so skipped files never start downloading. File order is `info.files` order, which matches Transmission's indices. Names come from `path.utf-8` if present, else `path`; non-UTF-8 legacy names are decoded with the root `encoding` field. A single-file torrent, an unparseable file, or a magnet link shows no list and adds as before (for magnets, pick files later in the Files tab). `readFile` guards both async reads with `latestFile` so a slow earlier file can't overwrite a later choice; rows are `React.memo`-ized because a 5000-file torrent otherwise lags on every toggle.
+
 ### Per-torrent properties
 `TorrentPropertiesDialog` fetches its own data on mount via `rpc.getTorrentProps()` (separate `torrent-get` call with only the needed fields). It does not rely on the `details` state in `MainWindow`. Save calls `rpc.saveTorrentProps()` which maps to `torrent-set`.
 
@@ -118,6 +124,7 @@ Global `keydown` listener in `MainWindow` (ignored while focus is on an `input`/
 | `frontend/src/ui/TorrentPropertiesDialog.tsx` | Per-torrent Properties dialog: General (speed/peer/seeding limits) + Trackers tab |
 | `frontend/src/utils/useResizableCols.ts` | Resizable + auto-fit columns; returns `{ widths, template, startResize, autoFit }` |
 | `frontend/src/utils/format.ts` | `size()`, `rate()`, `eta()`, `date()`, `duration()` — all formatting lives here |
+| `frontend/src/utils/torrentFiles.ts` | `parseTorrentFiles(bytes)` — bencode reader returning a .torrent's file list (used by `AddDialog`) |
 | `backend/main.py` | FastAPI: `GET /config`, `POST /config`; reads/writes `CONFIG_PATH` env |
 
 ## Adding a new torrent column
