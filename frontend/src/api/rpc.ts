@@ -221,8 +221,14 @@ export async function addTorrentFile(
   metainfo: string,
   downloadDir: string,
   paused: boolean,
+  unwantedFiles?: number[],
 ): Promise<void> {
-  await call('torrent-add', { metainfo, 'download-dir': downloadDir, paused })
+  await call('torrent-add', {
+    metainfo,
+    'download-dir': downloadDir,
+    paused,
+    ...(unwantedFiles?.length ? { 'files-unwanted': unwantedFiles } : {}),
+  })
 }
 
 export async function addMagnet(

@@ -380,9 +380,9 @@ export function MainWindow() {
     ]
   }
 
-  const handleAdd = async (params: { magnetOrFile: string; isFile: boolean; dir: string; paused: boolean }) => {
+  const handleAdd = async (params: { magnetOrFile: string; isFile: boolean; dir: string; paused: boolean; unwantedFiles?: number[] }) => {
     if (params.isFile) {
-      await rpc.addTorrentFile(params.magnetOrFile, params.dir, params.paused)
+      await rpc.addTorrentFile(params.magnetOrFile, params.dir, params.paused, params.unwantedFiles)
     } else {
       await rpc.addMagnet(params.magnetOrFile, params.dir, params.paused)
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Icon } from '../controls/Icon'
 
 export interface MenuItem {
@@ -24,6 +24,29 @@ interface ContextMenuProps {
 export function ContextMenu({ items, x, y, onClose, style }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [openSub, setOpenSub] = useState<number | null>(null)
+  const [off, setOff] = useState({ dx: 0, dy: 0 })
+  const offRef = useRef(off)
+
+  // Keep the menu inside the viewport: shift it back if it would overflow an edge.
+  // Re-runs when an inline submenu expands and grows the menu, and on window resize.
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const M = 4
+    const clamp = () => {
+      const cur = offRef.current
+      const r = el.getBoundingClientRect()
+      // r already includes the current offset, so subtract it to get the natural position
+      const dy = Math.max(M - (r.top - cur.dy), Math.min(0, window.innerHeight - M - (r.bottom - cur.dy)))
+      const dx = Math.max(M - (r.left - cur.dx), Math.min(0, window.innerWidth - M - (r.right - cur.dx)))
+      if (dx === cur.dx && dy === cur.dy) return
+      offRef.current = { dx, dy }
+      setOff({ dx, dy })
+    }
+    clamp()
+    window.addEventListener('resize', clamp)
+    return () => window.removeEventListener('resize', clamp)
+  }, [x, y, openSub, items.length])
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -44,9 +67,11 @@ export function ContextMenu({ items, x, y, onClose, style }: ContextMenuProps) {
       role="menu"
       style={{
         position: 'fixed',
-        top: y,
-        left: x,
+        top: y + off.dy,
+        left: x + off.dx,
         minWidth: 200,
+        maxHeight: 'calc(100vh - 18px)', // 2×4px viewport margin + 8px padding + 2px border (content-box)
+        overflowY: 'auto',
         padding: 4,
         background: 'var(--surface)',
         border: '1px solid var(--border)',
