@@ -65,7 +65,20 @@ export function MainWindow() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastClickRef = useRef<number | null>(null)
 
+  // Only one list request at a time: when the daemon stalls (e.g. while verifying a big
+  // torrent), overlapping polls pile up and make every response, including the details
+  // of the selected torrent, even slower.
+  const inFlightRef = useRef(false)
+  const rerunRef = useRef(false)
+
   const refresh = useCallback(async () => {
+    if (inFlightRef.current) {
+      // Explicit refresh (after an action): the response in flight may predate it,
+      // so run once more as soon as it lands.
+      rerunRef.current = true
+      return
+    }
+    inFlightRef.current = true
     try {
       const list = await rpc.getTorrents()
       setTorrents(list)
@@ -75,8 +88,19 @@ export function MainWindow() {
         setAuthRequired(true)
       }
       // will retry next tick — self-heals once the RPC endpoint is reachable again
+    } finally {
+      inFlightRef.current = false
+      if (rerunRef.current) {
+        rerunRef.current = false
+        refresh()
+      }
     }
   }, [])
+
+  // Timer ticks skip while a request is still pending instead of queueing another one.
+  const pollTick = useCallback(() => {
+    if (!inFlightRef.current) refresh()
+  }, [refresh])
 
   // Load session once on mount
   useEffect(() => {
@@ -89,14 +113,14 @@ export function MainWindow() {
   // Polling
   useEffect(() => {
     refresh()
-    pollRef.current = setInterval(refresh, POLL_INTERVAL)
+    pollRef.current = setInterval(pollTick, POLL_INTERVAL)
 
     const vis = () => {
       if (document.hidden) {
         if (pollRef.current) clearInterval(pollRef.current)
       } else {
         refresh()
-        pollRef.current = setInterval(refresh, POLL_INTERVAL)
+        pollRef.current = setInterval(pollTick, POLL_INTERVAL)
       }
     }
     document.addEventListener('visibilitychange', vis)
@@ -104,7 +128,7 @@ export function MainWindow() {
       if (pollRef.current) clearInterval(pollRef.current)
       document.removeEventListener('visibilitychange', vis)
     }
-  }, [refresh])
+  }, [refresh, pollTick])
 
   // Load details for selected torrent
   useEffect(() => {
@@ -235,7 +259,7 @@ export function MainWindow() {
   const immediateRefresh = () => {
     if (pollRef.current) clearInterval(pollRef.current)
     refresh()
-    pollRef.current = setInterval(refresh, POLL_INTERVAL)
+    pollRef.current = setInterval(pollTick, POLL_INTERVAL)
   }
 
   const handleAction = async (action: 'start' | 'pause' | 'delete') => {
